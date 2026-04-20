@@ -1,65 +1,154 @@
-import Image from "next/image";
+'use client'
+
+import { corpuri } from './lib/date'
+import type { Corp, Sala, Loc } from './lib/tipuri'
+
+import { useState } from 'react'
+import styles from './page.module.css'
+import SalaGrid from './componente/SalaGrid'
+import LoginButton from './componente/LoginButton'
+import ModalQR from './componente/ModalQR'
+
+const studentMock = {
+  nume: 'Popescu Alexandru',
+  studentId: 'USV2024001',
+}
 
 export default function Home() {
+  const [corpSelectat, setCorpSelectat] = useState(corpuri[0])
+  const [salaSelectata, setSalaSelectata] = useState(corpuri[0].sali[0])
+  const [logat, setLogat] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+
+  const oraAcum = new Date().toLocaleTimeString('ro-RO', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  function handleCorpChange(corpId: string) {
+    const corp = corpuri.find((c) => c.id === corpId)!
+    setCorpSelectat(corp)
+    setSalaSelectata(corp.sali[0])
+  }
+
+  function handleSalaChange(salaId: string) {
+    const sala = corpSelectat.sali.find((s) => s.id === salaId)!
+    setSalaSelectata(sala)
+  }
+
+  const locuriLibere = salaSelectata.locuri.filter((l) => !l.ocupat).length
+  const locuriOcupate = salaSelectata.locuri.filter((l) => l.ocupat).length
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className={styles.main}>
+
+      <header className={styles.header}>
+        <h1 className={styles.headerTitlu}>Sistem Prezență USV</h1>
+        <LoginButton
+          logat={logat}
+          numeStudent={studentMock.nume}
+          onLogin={() => setLogat(true)}
+          onDeconectare={() => { setLogat(false); setShowQR(false) }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      </header>
+
+      <div className={styles.container}>
+        <div className={styles.grid}>
+
+          {/* Sidebar */}
+          <aside className={styles.sidebar}>
+            <div className={styles.card}>
+              <p className={styles.cardTitlu}>Selectare sală</p>
+              <div className={styles.selectGroup}>
+                <div>
+                  <label className={styles.selectLabel}>Corp</label>
+                  <select
+                    className={styles.select}
+                    value={corpSelectat.id}
+                    onChange={(e) => handleCorpChange(e.target.value)}
+                  >
+                    {corpuri.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nume}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={styles.selectLabel}>Sală</label>
+                  <select
+                    className={styles.select}
+                    value={salaSelectata.id}
+                    onChange={(e) => handleSalaChange(e.target.value)}
+                  >
+                    {corpSelectat.sali.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nume}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.card}>
+              <p className={styles.cardTitlu}>Informații sală</p>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Ora curentă</span>
+                <span className={styles.infoValue}>{oraAcum}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Interval orar</span>
+                <span className={styles.infoValue}>{salaSelectata.orar.ora}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Materie</span>
+                <span className={styles.infoValue}>{salaSelectata.orar.materie}</span>
+              </div>
+              <hr className={styles.infoDivider} />
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Profesor</span>
+                <span className={styles.infoValue}>{salaSelectata.orar.profesor}</span>
+              </div>
+              <hr className={styles.infoDivider} />
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Locuri libere</span>
+                <span className={styles.locuriLibere}>{locuriLibere}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Locuri ocupate</span>
+                <span className={styles.locuriOcupate}>{locuriOcupate}</span>
+              </div>
+            </div>
+          </aside>
+
+          {/* Centru */}
+          <div className={styles.centru}>
+            <div className={styles.salaCard}>
+              <h2 className={styles.salaTitlu}>{salaSelectata.nume}</h2>
+              <SalaGrid locuri={salaSelectata.locuri} />
+            </div>
+
+            {logat && (
+              <>
+                <div className={styles.qrCard}>
+                  <button
+                    className={styles.butonQR}
+                    onClick={() => setShowQR(true)}
+                  >
+                    Generează cod QR
+                  </button>
+                </div>
+
+                {showQR && (
+                  <ModalQR
+                    studentId={studentMock.studentId}
+                    numeStudent={studentMock.nume}
+                    onInchide={() => setShowQR(false)}
+                  />
+                )}
+              </>
+            )}
+          </div>
+
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      </div>
+    </main>
+  )
 }

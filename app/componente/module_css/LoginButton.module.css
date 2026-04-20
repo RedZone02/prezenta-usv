@@ -1,0 +1,43 @@
+.buton {
+    border-radius: 0.5rem;
+    background-color: #0d9488;
+    padding: 0.375rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.18s ease;
+}
+
+.buton:hover {
+    background-color: #0f766e;
+}
+
+.numeStudent {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.butonDeconectare {
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    padding: 0.375rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.18s ease;
+}
+
+.butonDeconectare:hover {
+    background-color: #f3f4f6;
+}
