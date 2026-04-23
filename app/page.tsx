@@ -147,17 +147,18 @@ export default function Home() {
                   </button>
                 </div>
 
-                {showQR && (
+                {showQR && salaSelectata && (
                   <ModalQR
                     studentId={studentMock.studentId}
                     numeStudent={studentMock.nume}
+                    salaId={salaSelectata.id}
+                    salaSelectata={salaSelectata}
                     onInchide={() => setShowQR(false)}
                   />
                 )}
               </>
             )}
           </div>
-
         </div>
       </div>
       <Drawer open={drawerOpen} onInchide={() => setDrawerOpen(false)}>
