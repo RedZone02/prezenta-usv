@@ -1,30 +1,35 @@
 'use client'
 
-
+import Link from 'next/link'
 import styles from './module_css/LoginButton.module.css'
 
 type Props = {
     logat: boolean
     numeStudent?: string
-    onLogin: () => void
-    onDeconectare: () => void
+    onDeconectare?: () => void
+    isMobile?: boolean
 }
 
-export default function LoginButton({ logat, numeStudent, onLogin, onDeconectare }: Props) {
+export default function LoginButton({ logat, numeStudent, onDeconectare, isMobile }: Props) {
     if (logat) {
+        // Pe mobil - doar numele, fără buton
+        if (isMobile) {
+            return (
+                <span className={styles.numeMobil}>{numeStudent}</span>
+            )
+        }
+
+        // Pe desktop - buton care duce la pagina studentului
         return (
-            <div className={styles.wrapper}>
-                <span className={styles.numeStudent}>{numeStudent}</span>
-                <button className={styles.butonDeconectare} onClick={onDeconectare}>
-                    Deconectare
-                </button>
-            </div>
+            <Link href="/student" className={styles.butonProfil}>
+                👤  {numeStudent}
+            </Link>
         )
     }
 
     return (
-        <button className={styles.buton} onClick={onLogin}>
-            Login
-        </button>
+        <Link href="/login" className={styles.butonLogin}>
+            Conectare
+        </Link>
     )
 }

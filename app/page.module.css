@@ -234,7 +234,64 @@
     }
 }
 
-/*Asemanator cu cel de sus, ascundem sidebar-ul fix pentru telefon.*/
+.headerDreapta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.numeUtilizator {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profilActiuni {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.butonProfil {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #01696f;
+    color: #01696f;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.butonDeconectareDrawer {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.butonDeconectareDrawer:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+/* Responsive — ascunde numele pe ecrane mici */
+@media (max-width: 480px) {
+    .numeUtilizator {
+        display: none;
+    }
+}
 
 @media (max-width: 1023px) {
     .sidebar {

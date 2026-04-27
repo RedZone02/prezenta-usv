@@ -1,0 +1,187 @@
+.main {
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.loading {
+    padding: 2rem;
+    color: #64748b;
+    text-align: center;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.headerTitlu {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.headerDreapta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.numeStudent {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #334155;
+}
+
+.butonLogout {
+    padding: 0.45rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.butonLogout:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Continut */
+.continut {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Card */
+.card {
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.cardTitlu {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 1.25rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+/* Info grid */
+.infoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.infoItem {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.infoLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.infoValoare {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #0f172a;
+}
+
+/* Tabel orar */
+.tabelWrapper {
+    overflow-x: auto;
+}
+
+.tabel {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabel th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tabel td {
+    padding: 0.75rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.tabel tr:last-child td {
+    border-bottom: none;
+}
+
+.tabel tr:hover td {
+    background: #f8fafc;
+}
+
+.materie {
+    display: block;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.codMaterie {
+    display: block;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-top: 0.15rem;
+}
+
+.gol {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    padding: 1rem 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .header {
+        padding: 1rem;
+    }
+
+    .headerTitlu {
+        font-size: 0.95rem;
+    }
+
+    .continut {
+        padding: 1rem;
+    }
+
+    .infoGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
