@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '../lib/supabase/client'
+import { createClientBrowser } from '../lib/supabase/client'
 import styles from './page.module.css'
 
 export default function LoginPage() {
-    const supabase = createClient()
+    const supabase = createClientBrowser()
     const router = useRouter()
 
     const [email, setEmail] = useState('')

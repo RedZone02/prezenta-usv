@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '../lib/supabase/client'
+import { createClientBrowser } from '../lib/supabase/client'
 import styles from './page.module.css'
 
 type Profil = {
@@ -33,7 +33,7 @@ type OrarEntry = {
 const ZILE = ['', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică']
 
 export default function StudentPage() {
-    const supabase = createClient()
+    const supabase = createClientBrowser()
     const router = useRouter()
 
     const [profil, setProfil] = useState<Profil | null>(null)

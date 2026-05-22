@@ -10,12 +10,13 @@ type Props = {
 }
 
 export default function SalaGrid({ locuri }: Props) {
+    const locuriSortate = [...locuri].sort((a, b) => a.numar - b.numar)
     return (
         <div className={styles.wrapper}>
             <div className={styles.tabla}>Tablă</div>
 
             <div className={styles.grid}>
-                {locuri.map((loc) => (
+                {locuriSortate.map((loc) => (
                     <div
                         key={loc.numar}
                         className={`${styles.loc} ${loc.ocupat ? styles.locOcupat : styles.locLiber}`}

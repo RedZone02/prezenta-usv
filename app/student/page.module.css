@@ -185,3 +185,19 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+.butonStudent {
+    padding: 0.6rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.95rem;
+    transition: background 0.15s;
+}
+
+.butonStudent:hover {
+    background: #f0f7ff;
+    border-color: #4a90d9;
+}

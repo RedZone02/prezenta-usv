@@ -1,0 +1,450 @@
+.main {
+    min-height: 100vh;
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.headerTitlu {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.headerStanga {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.headerDreapta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.headerBadge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background-color: #7c3aed;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+}
+
+.butonInapoi {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    text-decoration: none;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    transition: background 0.15s;
+}
+
+.butonInapoi:hover {
+    background: #f8fafc;
+}
+
+/* Layout */
+.container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0;
+}
+
+.tab {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+}
+
+.tab:hover {
+    color: #0f172a;
+}
+
+.tabActiv {
+    color: #0d9488;
+    border-bottom-color: #0d9488;
+    font-weight: 600;
+}
+
+/* Card */
+.card {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cardTitlu {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+
+/* Select */
+.select {
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1e293b;
+    outline: none;
+    cursor: pointer;
+}
+
+.select:focus {
+    outline: 2px solid #0d9488;
+    outline-offset: 2px;
+    border-color: #2dd4bf;
+}
+
+/* Sali layout */
+.saliLayout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (min-width: 1024px) {
+    .saliLayout {
+        grid-template-columns: 280px 1fr;
+    }
+}
+
+.saliSidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.saliLista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.salaItem {
+    width: 100%;
+    text-align: left;
+    padding: 0.875rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.salaItem:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.salaItemActiv {
+    border-color: #0d9488 !important;
+    background: #f0fdfa !important;
+}
+
+.salaItemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.salaItemNume {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.salaItemCorp {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.salaItemBar {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin-bottom: 0.4rem;
+}
+
+.salaItemBarFill {
+    height: 100%;
+    background: #0d9488;
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+.salaItemStats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Detaliu sală */
+.salaDetaliu {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.salaDetaliuHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.salaDetaliuStats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.statChip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* Grid locuri (readonly pentru admin) */
+.tabla {
+    background-color: #1e293b;
+    color: white;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.gridLocuri {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.loc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.4rem;
+    border-radius: 0.6rem;
+    font-size: 0.7rem;
+    border: none;
+    cursor: default;
+}
+
+.locLiber {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.locOcupat {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.locLabel {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.locNr {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.legenda {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+}
+
+.legendaItem {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.dotVerde {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #16a34a;
+}
+
+.dotRosu {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #dc2626;
+}
+
+/* Tabel */
+.tabel {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.tabel th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tabel td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.tabel tr:last-child td {
+    border-bottom: none;
+}
+
+.locBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+/* Culori text */
+.verde {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.rosu {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* Chips statistici */
+.statVerde {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.statRosu {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.statAlbastru {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* Rapoarte */
+.rapoarteHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filtre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filtruLabel {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.raportBar {
+    position: relative;
+    height: 20px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    min-width: 120px;
+    overflow: hidden;
+}
+
+.raportBarFill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.raportPct {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1e293b;
+}

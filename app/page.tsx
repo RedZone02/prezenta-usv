@@ -1,7 +1,7 @@
 'use client'
 
-import { corpuri } from './lib/date'
-import type { Corp, Sala, Loc } from './lib/tipuri'
+import { loadCorpuri } from './lib/date'
+import type { Corp, Sala } from './lib/tipuri'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './page.module.css'
@@ -9,7 +9,7 @@ import SalaGrid from './componente/SalaGrid'
 import LoginButton from './componente/LoginButton'
 import ModalQR from './componente/ModalQR'
 import Drawer from './componente/Drawer'
-import { createClient } from './lib/supabase/client'
+import { createClientBrowser } from './lib/supabase/client'
 
 type Profil = {
   id: string
@@ -17,22 +17,40 @@ type Profil = {
   role: string
 }
 
-
-
 export default function Home() {
-  const supabase = createClient()
+  const supabase = createClientBrowser()
   const router = useRouter()
-  const [corpSelectat, setCorpSelectat] = useState(corpuri[0])
-  const [salaSelectata, setSalaSelectata] = useState<Sala>(corpuri[0].sali[0])
+
+  // 1. corpuri vin din DB, nu mai sunt const mock
+  const [corpuri, setCorpuri] = useState<Corp[]>([])
+  const [corpSelectat, setCorpSelectat] = useState<Corp | null>(null)
+  const [salaSelectata, setSalaSelectata] = useState<Sala | null>(null)
   const [logat, setLogat] = useState(false)
   const [showQR, setShowQR] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [profil, setProfil] = useState<Profil | null>(null)
+  const [loadingSali, setLoadingSali] = useState(true)
 
+  // 2. încarcă salile din Supabase (prin loadCorpuri)
+  useEffect(() => {
+    async function fetchCorpuri() {
+      const data = await loadCorpuri()
+      setCorpuri(data)
+      if (data.length > 0) {
+        setCorpSelectat(data[0])
+        if (data[0].sali.length > 0) {
+          setSalaSelectata(data[0].sali[0])
+        }
+      }
+      setLoadingSali(false)
+    }
+    fetchCorpuri()
+  }, [])
+
+  // 3. verifică sesiunea, la fel ca înainte
   useEffect(() => {
     async function verificaSesiune() {
       const { data: { user } } = await supabase.auth.getUser()
-
       if (!user) return
 
       const { data } = await supabase
@@ -54,6 +72,60 @@ export default function Home() {
     }
 
     verificaSesiune()
+  }, [supabase, router])
+
+  useEffect(() => {
+    console.log('🟡 Realtime useEffect pornit')
+
+    const channel = supabase
+      .channel(`room-seats-${Date.now()}`) // nume unic, evită conflicte
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_seats' },
+        (payload: any) => {
+          const updated = payload.new
+
+          // log de verificare — șterge după ce merge
+          console.log('updated:', updated)
+
+          setSalaSelectata(prev => {
+            if (!prev) return prev
+            // verifică că update-ul e pentru sala curentă
+            if (prev.id !== updated.room_id) return prev
+            return {
+              ...prev,
+              locuri: prev.locuri.map(loc =>
+                loc.numar === updated.numar  // ← potrivire după numar
+                  ? { ...loc, ocupat: updated.ocupat, rezervat: updated.rezervat }
+                  : loc
+              )
+            }
+          })
+
+          setCorpuri(prevCorpuri =>
+            prevCorpuri.map(corp => ({
+              ...corp,
+              sali: corp.sali.map(sala =>
+                sala.id === updated.room_id
+                  ? {
+                    ...sala,
+                    locuri: sala.locuri.map(loc =>
+                      loc.numar === updated.numar  // ← același fix
+                        ? { ...loc, ocupat: updated.ocupat, rezervat: updated.rezervat }
+                        : loc
+                    )
+                  }
+                  : sala
+              )
+            }))
+          )
+        }
+      )
+      .subscribe((status: string) => {
+        console.log('📡 Status:', status)
+      })
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const oraAcum = new Date().toLocaleTimeString('ro-RO', {
@@ -62,13 +134,16 @@ export default function Home() {
   })
 
   function handleCorpChange(corpId: string) {
-    const corp = corpuri.find((c) => c.id === corpId)!
+    const corp = corpuri.find((c) => c.id === corpId)
+    if (!corp) return
     setCorpSelectat(corp)
-    setSalaSelectata(corp.sali[0])
+    setSalaSelectata(corp.sali[0] ?? null)
   }
 
   function handleSalaChange(salaId: string) {
-    const sala = corpSelectat.sali.find((s) => s.id === salaId)!
+    if (!corpSelectat) return
+    const sala = corpSelectat.sali.find((s) => s.id === salaId)
+    if (!sala) return
     setSalaSelectata(sala)
   }
 
@@ -79,8 +154,24 @@ export default function Home() {
     setShowQR(false)
   }
 
+
+
+  if (loadingSali || !corpSelectat || !salaSelectata) {
+    return (
+      <main className={styles.main}>
+        <header className={styles.header}>
+          <h1 className={styles.headerTitlu}>Sistem Prezență USV</h1>
+        </header>
+        <div className={styles.container}>
+          <p>Se încarcă sălile...</p>
+        </div>
+      </main>
+    )
+  }
+
   const locuriLibere = salaSelectata.locuri.filter((l) => !l.ocupat).length
   const locuriOcupate = salaSelectata.locuri.filter((l) => l.ocupat).length
+
 
   return (
     <main className={styles.main}>

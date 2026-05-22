@@ -1,70 +1,64 @@
-import { Corp } from './tipuri'
+// app/lib/date.ts
+'use client'
 
-export const corpuri: Corp[] = [
-    {
-        id: 'corp-c',
-        nume: 'Corp C',
-        sali: [
-            {
-                id: 'c101',
-                nume: 'C101',
-                randuri: 4,
-                coloane: 4,
-                orar: {
-                    ora: '10:00 - 12:00',
-                    materie: 'Programare Web',
-                    profesor: 'Prof. Ionescu',
-                    grupa: '3A',
-                },
-                locuri: Array.from({ length: 16 }, (_, i) => ({
-                    id: `c101-loc-${i + 1}`,
-                    numar: i + 1,
-                    ocupat: [2, 5, 6, 11].includes(i),
-                    rezervat: [8].includes(i),
-                })),
+import { createClientBrowser } from './supabase/client'
+import type { Corp, Sala, Loc } from './tipuri'
+
+export async function loadCorpuri(): Promise<Corp[]> {
+    const supabase = createClientBrowser()
+
+    // 1. Luăm toate clădirile
+    const { data: buildings, error: bErr } = await supabase
+        .from('buildings')
+        .select('id, name')
+        .order('name')
+
+    if (bErr || !buildings) return []
+
+    // 2. Luăm sălile + locurile
+    const { data: rooms, error: rErr } = await supabase
+        .from('rooms')
+        .select('id, building_id, name, rows, cols, ora, materie, profesor, grupa, room_seats ( numar, ocupat, rezervat )')
+        .order('name')
+
+    if (rErr || !rooms) return []
+
+    // 3. Grupăm înapoi în structura Corp[]
+    const corpMap = new Map<string, Corp>()
+
+    for (const b of buildings) {
+        corpMap.set(b.id, {
+            id: b.id,
+            nume: b.name,
+            sali: [],
+        })
+    }
+
+    for (const r of rooms as any[]) {
+        const corp = corpMap.get(r.building_id)
+        if (!corp) continue
+
+        const sala: Sala = {
+            id: r.id,
+            nume: r.name,
+            randuri: r.rows,
+            coloane: r.cols,
+            orar: {
+                ora: r.ora,
+                materie: r.materie,
+                profesor: r.profesor,
+                grupa: r.grupa,
             },
-            {
-                id: 'c102',
-                nume: 'C102',
-                randuri: 3,
-                coloane: 5,
-                orar: {
-                    ora: '12:00 - 14:00',
-                    materie: 'Baze de Date',
-                    profesor: 'Prof. Popescu',
-                    grupa: '2B',
-                },
-                locuri: Array.from({ length: 15 }, (_, i) => ({
-                    id: `c102-loc-${i + 1}`,
-                    numar: i + 1,
-                    ocupat: [1, 3, 7, 9, 13].includes(i),
-                    rezervat: [4].includes(i),
-                })),
-            },
-        ],
-    },
-    {
-        id: 'corp-a',
-        nume: 'Corp A',
-        sali: [
-            {
-                id: 'a201',
-                nume: 'A201',
-                randuri: 4,
-                coloane: 4,
-                orar: {
-                    ora: '08:00 - 10:00',
-                    materie: 'Algoritmi',
-                    profesor: 'Prof. Dumitrescu',
-                    grupa: '1C',
-                },
-                locuri: Array.from({ length: 16 }, (_, i) => ({
-                    id: `a201-loc-${i + 1}`,
-                    numar: i + 1,
-                    ocupat: [0, 4, 9, 14, 19, 24].includes(i),
-                    rezervat: [2, 7].includes(i),
-                })),
-            },
-        ],
-    },
-]
+            locuri: (r.room_seats ?? []).map((s: any): Loc => ({
+                id: `${r.id}-loc-${s.numar}`,
+                numar: s.numar,
+                ocupat: s.ocupat,
+                rezervat: s.rezervat,
+            })),
+        }
+
+        corp.sali.push(sala)
+    }
+
+    return Array.from(corpMap.values())
+}

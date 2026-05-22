@@ -1,0 +1,476 @@
+.main {
+    min-height: 100vh;
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+/* HEADER */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.headerStanga {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.headerTitlu {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.headerBadge {
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+}
+
+.headerDreapta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.butonInapoi {
+    font-size: 0.875rem;
+    color: #64748b;
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    transition: background 0.15s;
+}
+
+.butonInapoi:hover {
+    background: #f1f5f9;
+}
+
+.butonDeconectare {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #dc2626;
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    padding: 0.4rem 0.9rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.butonDeconectare:hover {
+    background: #fee2e2;
+}
+
+/* CONTAINER */
+.container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* INFO BAR */
+.infoBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.infoBarItem {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-right: 1.5rem;
+    border-right: 1px solid #f1f5f9;
+}
+
+.infoBarItem:last-child {
+    border-right: none;
+}
+
+.infoBarLabel {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.infoBarValue {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.verde {
+    color: #16a34a;
+}
+
+.rosu {
+    color: #dc2626;
+}
+
+/* TABS */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tab {
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tab:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.tabActiv {
+    background: #0d9488;
+    color: #ffffff;
+    border-color: #0d9488;
+    font-weight: 600;
+}
+
+.tabActiv:hover {
+    background: #0f766e;
+}
+
+/* CARD */
+.card {
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cardHint {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.cardTitlu {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* SALA */
+.tabla {
+    background: #1e293b;
+    color: #ffffff;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    max-width: 28rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.gridLocuri {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    max-width: 28rem;
+    margin: 0 auto 1.5rem;
+}
+
+.loc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    border-radius: 0.75rem;
+    border: 2px solid;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    background: transparent;
+}
+
+.loc:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loc:active {
+    transform: scale(0.97);
+}
+
+.locLiber {
+    border-color: #86efac;
+    color: #16a34a;
+    background: #f0fdf4;
+}
+
+.locOcupat {
+    border-color: #fca5a5;
+    color: #dc2626;
+    background: #fff5f5;
+}
+
+.locLabel {
+    font-size: 0.65rem;
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+.locNr {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.legenda {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.legendaItem {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.dotVerde {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: #22c55e;
+    display: inline-block;
+}
+
+.dotRosu {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: #ef4444;
+    display: inline-block;
+}
+
+/* TABEL PREZENTI */
+.tabelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.butonExport {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0d9488;
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    padding: 0.4rem 0.9rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.butonExport:hover {
+    background: #ccfbf1;
+}
+
+.gol {
+    text-align: center;
+    color: #94a3b8;
+    padding: 2rem 0;
+    font-size: 0.9rem;
+}
+
+.tabel {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.tabel th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.tabel td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f8fafc;
+    color: #334155;
+}
+
+.tabel tr:last-child td {
+    border-bottom: none;
+}
+
+.tabel tr:hover td {
+    background: #f8fafc;
+}
+
+.locBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #16a34a;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.butonElimina {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #dc2626;
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    padding: 0.3rem 0.75rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.butonElimina:hover {
+    background: #fee2e2;
+}
+
+/* STATISTICI */
+.statisticiWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.statisticiGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .statisticiGrid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.statCard {
+    border-radius: 1rem;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.statVerde {
+    background: #f0fdf4;
+}
+
+.statGri {
+    background: #f8fafc;
+}
+
+.statAlbastru {
+    background: #eff6ff;
+}
+
+.statPortocaliu {
+    background: #fff7ed;
+}
+
+.statNr {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.statVerde .statNr {
+    color: #16a34a;
+}
+
+.statGri .statNr {
+    color: #475569;
+}
+
+.statAlbastru .statNr {
+    color: #2563eb;
+}
+
+.statPortocaliu .statNr {
+    color: #ea580c;
+}
+
+.statLabel {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    text-align: center;
+}
+
+.statBarLabel {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.75rem;
+}
+
+.statBar {
+    width: 100%;
+    height: 0.75rem;
+    background: #f1f5f9;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.statBarFill {
+    height: 100%;
+    background: linear-gradient(90deg, #0d9488, #2dd4bf);
+    border-radius: 9999px;
+    transition: width 0.4s ease;
+}
+
+.statBarText {
+    font-size: 0.8rem;
+    color: #64748b;
+}
