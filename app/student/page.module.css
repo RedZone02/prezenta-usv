@@ -201,3 +201,25 @@
     background: #f0f7ff;
     border-color: #4a90d9;
 }
+
+.badgeSaptamana {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    background: #e0f2f1;
+    color: #00695c;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.badgeSaptamanaToate {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}

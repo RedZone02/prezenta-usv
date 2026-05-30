@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 
 type Loc = {
     id: number
@@ -18,9 +18,28 @@ type Loc = {
 type Student = {
     id: string
     full_name: string
+    student_number?: string
+    grupa?: string
 }
 
+type OrarCurent = {
+    id: string
+    materie: string
+    grupa: string
+    ora_start: string
+    ora_end: string
+} | null
+
 type Tab = 'sala' | 'prezenti' | 'statistici'
+
+function getSaptamana(): 'par' | 'impar' {
+    const startAnScolar = new Date('2025-09-29')
+    const acum = new Date()
+    const saptamaniTrecute = Math.floor(
+        (acum.getTime() - startAnScolar.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+    return saptamaniTrecute % 2 === 0 ? 'impar' : 'par'
+}
 
 export default function ProfesorPage() {
     const supabase = createClientBrowser()
@@ -29,10 +48,28 @@ export default function ProfesorPage() {
     const [locuri, setLocuri] = useState<Loc[]>([])
     const [loading, setLoading] = useState(true)
     const [studenti, setStudenti] = useState<Student[]>([])
+    const [orarCurent, setOrarCurent] = useState<OrarCurent>(null)
+    const [numeProfesor, setNumeProfesor] = useState<string>('')
     const [modalLoc, setModalLoc] = useState<Loc | null>(null)
+    const [exportLoading, setExportLoading] = useState(false)
     const ROOM_ID = 'c101'
 
-    // 1. Încarcă locurile
+    // Încarcă numele profesorului logat
+    useEffect(() => {
+        async function fetchProfil() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const { data } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', user.id)
+                .single()
+            if (data) setNumeProfesor(data.full_name)
+        }
+        fetchProfil()
+    }, [])
+
+    // Încarcă locurile
     useEffect(() => {
         async function fetchLocuri() {
             const { data, error } = await supabase
@@ -46,7 +83,7 @@ export default function ProfesorPage() {
         fetchLocuri()
     }, [])
 
-    // 2. Realtime
+    // Realtime
     useEffect(() => {
         async function fetchLocuri() {
             const { data, error } = await supabase
@@ -61,48 +98,65 @@ export default function ProfesorPage() {
             .channel(`profesor-room-${Date.now()}`)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'room_seats' },
-                () => {
-                    fetchLocuri() // reîncarcă cu profiles inclus
-                }
+                () => { fetchLocuri() }
             )
             .subscribe()
 
         return () => { supabase.removeChannel(channel) }
     }, [])
 
-    // 3. Studenți din ora curentă
+    // Studenți + orar curent cu filtru săptămână
     useEffect(() => {
         async function fetchStudentiOraActuala() {
             const acum = new Date()
-            const ziAzi = acum.getDay() === 0 ? 7 : acum.getDay()
             const bucuresti = new Date(acum.toLocaleString('en-US', { timeZone: 'Europe/Bucharest' }))
+            const ziAzi = bucuresti.getDay() === 0 ? 7 : bucuresti.getDay()
             const ora = String(bucuresti.getHours()).padStart(2, '0')
             const min = String(bucuresti.getMinutes()).padStart(2, '0')
-            const oraAzi = `${ora}:${min}` // garantat "11:14"
-            console.log('Zi:', ziAzi, 'Ora:', oraAzi)
-            const { data: orarData, error: orarError } = await supabase
+            const oraAzi = `${ora}:${min}`
+            const saptamana = getSaptamana()
+
+            const { data: orarData } = await supabase
                 .from('schedule')
                 .select('id, materie, grupa, ora_start, ora_end')
                 .eq('room_id', ROOM_ID)
                 .eq('zi', ziAzi)
                 .lte('ora_start', oraAzi)
                 .gte('ora_end', oraAzi)
+                .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
                 .single()
-            console.log('Orar găsit:', orarData, 'Eroare:', orarError)
+
             if (!orarData) {
+                setOrarCurent(null)
                 setStudenti([])
                 return
             }
 
-            const { data: enrollData, error: enrollError } = await supabase
+            setOrarCurent(orarData)
+
+            // Studenți înscriși cu date complete pentru export
+            const { data: enrollData } = await supabase
                 .from('enrollments')
-                .select('profiles(id, full_name)')
+                .select(`
+                    profiles (
+                        id,
+                        full_name,
+                        students ( student_number, grupa )
+                    )
+                `)
                 .eq('schedule_id', orarData.id)
 
-            console.log('Enrollments:', enrollData, 'Eroare:', enrollError)
-
             if (enrollData) {
-                setStudenti(enrollData.map((e: any) => e.profiles).filter(Boolean))
+                const lista = enrollData
+                    .map((e: any) => e.profiles)
+                    .filter(Boolean)
+                    .map((p: any) => ({
+                        id: p.id,
+                        full_name: p.full_name,
+                        student_number: p.students?.student_number ?? '—',
+                        grupa: p.students?.grupa ?? orarData.grupa,
+                    }))
+                setStudenti(lista)
             }
         }
         fetchStudentiOraActuala()
@@ -137,6 +191,48 @@ export default function ProfesorPage() {
         router.push('/')
     }
 
+    // Export Excel
+    async function handleExportExcel() {
+        if (!orarCurent) return
+        setExportLoading(true)
+
+        try {
+            // Setul de student_id-uri prezente în sală
+            const prezentiIds = new Set(
+                locuri
+                    .filter(l => l.ocupat && l.student_id)
+                    .map(l => l.student_id)
+            )
+
+            const randuri = studenti.map(s => ({
+                'Nr. Matricol': s.student_number ?? '—',
+                'Nume Student': s.full_name,
+                'Grupă': s.grupa ?? '—',
+                'Prezent': prezentiIds.has(s.id) ? 'Prezent' : 'Absent',
+            }))
+
+            const dataAzi = new Date().toLocaleDateString('ro-RO')
+            const numeMaterie = orarCurent.materie.replace(/[^a-zA-Z0-9 ]/g, '')
+
+            const ws = XLSX.utils.json_to_sheet(randuri)
+
+            // Lățimi coloane
+            ws['!cols'] = [
+                { wch: 16 },
+                { wch: 30 },
+                { wch: 12 },
+                { wch: 12 },
+            ]
+
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, 'Prezenta')
+
+            XLSX.writeFile(wb, `Prezenta_${numeMaterie}_${dataAzi}.xlsx`)
+        } finally {
+            setExportLoading(false)
+        }
+    }
+
     const prezenti = locuri.filter(l => l.ocupat)
     const libere = locuri.filter(l => !l.ocupat)
     const procent = locuri.length > 0 ? Math.round((prezenti.length / locuri.length) * 100) : 0
@@ -155,7 +251,9 @@ export default function ProfesorPage() {
                     <span className={styles.headerBadge}>Profesor</span>
                 </div>
                 <div className={styles.headerDreapta}>
-                    <Link href="/" className={styles.butonInapoi}>← Pagina principală</Link>
+                    {numeProfesor && (
+                        <span className={styles.numeProfesor}>👤 {numeProfesor}</span>
+                    )}
                     <button className={styles.butonInapoi} onClick={handleDeconectare}>
                         ⎋ Deconectare
                     </button>
@@ -163,6 +261,21 @@ export default function ProfesorPage() {
             </header>
 
             <div className={styles.container}>
+
+                {/* Banner orar curent */}
+                {orarCurent ? (
+                    <div className={styles.orarBanner}>
+                        <span>📚 <strong>{orarCurent.materie}</strong></span>
+                        <span>👥 Grupa: <strong>{orarCurent.grupa}</strong></span>
+                        <span>🕐 {orarCurent.ora_start.slice(0, 5)} – {orarCurent.ora_end.slice(0, 5)}</span>
+                        <span>📅 Săpt. <strong>{getSaptamana()}</strong></span>
+                    </div>
+                ) : (
+                    <div className={styles.orarBannerGol}>
+                        Nicio oră în desfășurare momentan
+                    </div>
+                )}
+
                 <div className={styles.infoBar}>
                     {[
                         { label: 'Sală', value: ROOM_ID.toUpperCase() },
@@ -220,32 +333,66 @@ export default function ProfesorPage() {
                 {/* TAB PREZENȚI */}
                 {tabActiv === 'prezenti' && (
                     <div className={styles.card}>
-                        <h2 className={styles.cardTitlu}>Locuri ocupate — {prezenti.length}</h2>
-                        {prezenti.length === 0 ? (
-                            <p className={styles.gol}>Niciun loc ocupat momentan.</p>
+                        <div className={styles.cardHeader}>
+                            <h2 className={styles.cardTitlu}>
+                                Studenți înscriși — {studenti.length} total
+                            </h2>
+                            <button
+                                className={styles.butonExport}
+                                onClick={handleExportExcel}
+                                disabled={exportLoading || !orarCurent || studenti.length === 0}
+                                title={!orarCurent ? 'Nu există oră în desfășurare' : ''}
+                            >
+                                {exportLoading ? '⏳ Se exportă...' : '📥 Export Excel'}
+                            </button>
+                        </div>
+
+                        {studenti.length === 0 ? (
+                            <p className={styles.gol}>
+                                {orarCurent
+                                    ? 'Nu există studenți înscriși la această oră.'
+                                    : 'Nicio oră în desfășurare momentan.'}
+                            </p>
                         ) : (
                             <table className={styles.tabel}>
                                 <thead>
                                     <tr>
-                                        <th>Loc nr.</th>
+                                        <th>Nr. Matricol</th>
                                         <th>Nume student</th>
+                                        <th>Grupă</th>
                                         <th>Status</th>
                                         <th>Acțiuni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {[...prezenti].sort((a, b) => a.numar - b.numar).map(loc => (
-                                        <tr key={loc.id}>
-                                            <td><span className={styles.locBadge}>{loc.numar}</span></td>
-                                            <td>{loc.profiles?.full_name ?? <em style={{ color: '#999' }}>Neidentificat</em>}</td>
-                                            <td>{loc.rezervat ? '🟡 Rezervat' : '🟢 Prezent'}</td>
-                                            <td>
-                                                <button className={styles.butonElimina} onClick={() => elibereazaLoc(loc)}>
-                                                    Eliberează
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {studenti.map(s => {
+                                        const locStudent = locuri.find(
+                                            l => l.ocupat && l.student_id === s.id
+                                        )
+                                        const estePrezent = !!locStudent
+                                        return (
+                                            <tr key={s.id}>
+                                                <td>{s.student_number ?? '—'}</td>
+                                                <td>{s.full_name}</td>
+                                                <td>{s.grupa ?? '—'}</td>
+                                                <td>
+                                                    <span className={estePrezent ? styles.badgePrezent : styles.badgeAbsent}>
+                                                        {estePrezent ? '🟢 Prezent' : '🔴 Absent'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {estePrezent && (
+                                                        <button
+                                                            className={styles.butonElimina}
+                                                            onClick={() => elibereazaLoc(locStudent!)}
+                                                        >
+                                                            Eliberează
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         )}
@@ -258,8 +405,8 @@ export default function ProfesorPage() {
                         <div className={styles.statisticiGrid}>
                             {[
                                 { nr: prezenti.length, label: 'Prezenți', cls: styles.statVerde },
-                                { nr: libere.length, label: 'Locuri libere', cls: styles.statGri },
-                                { nr: locuri.length, label: 'Total locuri', cls: styles.statAlbastru },
+                                { nr: studenti.length - prezenti.length, label: 'Absenți', cls: styles.statRosu },
+                                { nr: studenti.length, label: 'Total înscriși', cls: styles.statAlbastru },
                                 { nr: `${procent}%`, label: 'Grad ocupare', cls: styles.statPortocaliu },
                             ].map(({ nr, label, cls }) => (
                                 <div key={label} className={`${styles.statCard} ${cls}`}>
@@ -269,12 +416,12 @@ export default function ProfesorPage() {
                             ))}
                         </div>
                         <div className={styles.card}>
-                            <p className={styles.statBarLabel}>Ocupare sală</p>
+                            <p className={styles.statBarLabel}>Prezență oră curentă</p>
                             <div className={styles.statBar}>
                                 <div className={styles.statBarFill} style={{ width: `${procent}%` }} />
                             </div>
                             <p className={styles.statBarText}>
-                                {prezenti.length} din {locuri.length} locuri ocupate ({procent}%)
+                                {prezenti.length} din {studenti.length} studenți prezenți ({procent}%)
                             </p>
                         </div>
                     </div>
@@ -299,7 +446,6 @@ export default function ProfesorPage() {
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {studenti.map(s => {
-                                        // Verifică dacă studentul are deja un loc ocupat
                                         const areLocOcupat = locuri.some(
                                             l => l.ocupat && l.student_id === s.id
                                         )
@@ -309,14 +455,17 @@ export default function ProfesorPage() {
                                                 className={styles.butonStudent}
                                                 onClick={() => !areLocOcupat && asigneazaStudent(s.id)}
                                                 disabled={areLocOcupat}
-                                                title={areLocOcupat ? 'Student deja prezent în sală' : ''}
                                                 style={{
                                                     opacity: areLocOcupat ? 0.4 : 1,
                                                     cursor: areLocOcupat ? 'not-allowed' : 'pointer',
                                                 }}
                                             >
                                                 {areLocOcupat ? '✅' : '👤'} {s.full_name}
-                                                {areLocOcupat && <em style={{ fontSize: '0.75rem', marginLeft: '0.5rem', color: '#888' }}>deja prezent</em>}
+                                                {areLocOcupat && (
+                                                    <em style={{ fontSize: '0.75rem', marginLeft: '0.5rem', color: '#888' }}>
+                                                        deja prezent
+                                                    </em>
+                                                )}
                                             </button>
                                         )
                                     })}
