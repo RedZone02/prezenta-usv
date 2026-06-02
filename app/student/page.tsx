@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientBrowser } from '../lib/supabase/client'
 import styles from './page.module.css'
+import { getSaptamana } from '../lib/date'
 
 type Profil = {
     full_name: string
@@ -13,34 +14,25 @@ type Profil = {
 
 type Student = {
     id: string
-    student_number: string
+    nr_matricol: string
     grupa: string
-    an_studiu: number
+    an: number
+    specializare: string
     facultate: string
 }
 
 type OrarEntry = {
     id: string
-    zi_saptamana: number
+    zi: number
     ora_start: string
     ora_end: string
     grupa: string
     saptamana: 'par' | 'impar' | null
-    subjects: { name: string; subject_code: string }[]
-    teachers: { profiles: { full_name: string }[] }[]
-    rooms: { room_code: string; building: string }[]
+    materie: string
+    profiles: { full_name: string } | null
 }
 
 const ZILE = ['', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică']
-
-function getSaptamana(): 'par' | 'impar' {
-    const startAnScolar = new Date('2025-09-29') // prima luni a anului școlar
-    const acum = new Date()
-    const saptamaniTrecute = Math.floor(
-        (acum.getTime() - startAnScolar.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    )
-    return saptamaniTrecute % 2 === 0 ? 'impar' : 'par'
-}
 
 
 export default function StudentPage() {
@@ -80,8 +72,8 @@ export default function StudentPage() {
 
             // Date student
             const { data: studentData } = await supabase
-                .from('students')
-                .select('id, student_number, grupa, an_studiu, facultate')
+                .from('profiles')
+                .select('id, nr_matricol, grupa, an, specializare, facultate')
                 .eq('id', user.id)
                 .single()
 
@@ -94,21 +86,21 @@ export default function StudentPage() {
 
             // Orar pentru grupa studentului
             const { data: orarData } = await supabase
-                .from('schedule_entries')
+                .from('schedule')
                 .select(`
                     id,
-                    zi_saptamana,
+                    zi,
                     ora_start,
                     ora_end,
                     grupa,
                     saptamana,
-                    subjects ( name, subject_code ),
-                    teachers ( profiles ( full_name ) ),
-                    rooms ( room_code, building )
+                    materie,
+                    profesor_id,
+                    profiles!profesor_id ( full_name )
                 `)
                 .eq('grupa', studentData.grupa)
                 .or(`saptamana.is.null,saptamana.eq.${getSaptamana()}`)
-                .order('zi_saptamana', { ascending: true })
+                .order('zi', { ascending: true })
                 .order('ora_start', { ascending: true })
 
             setOrar((orarData as OrarEntry[]) ?? [])
@@ -161,7 +153,7 @@ export default function StudentPage() {
                         </div>
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>Nr. matricol</span>
-                            <span className={styles.infoValoare}>{student?.student_number ?? '—'}</span>
+                            <span className={styles.infoValoare}>{student?.nr_matricol ?? '—'}</span>
                         </div>
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>Grupă</span>
@@ -169,7 +161,11 @@ export default function StudentPage() {
                         </div>
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>An</span>
-                            <span className={styles.infoValoare}>{student?.an_studiu ?? '—'}</span>
+                            <span className={styles.infoValoare}>{student?.an ?? '—'}</span>
+                        </div>
+                        <div className={styles.infoItem}>
+                            <span className={styles.infoLabel}>Specializare</span>
+                            <span className={styles.infoValoare}>{student?.specializare ?? '—'}</span>
                         </div>
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>Facultate</span>
@@ -198,6 +194,7 @@ export default function StudentPage() {
                                         <th>Interval</th>
                                         <th>Materie</th>
                                         <th>Profesor</th>
+                                        <th>Tip</th>
                                         <th>Sală</th>
                                         <th>Săpt.</th>
                                     </tr>
@@ -205,16 +202,10 @@ export default function StudentPage() {
                                 <tbody>
                                     {orar.map((entry) => (
                                         <tr key={entry.id}>
-                                            <td>{ZILE[entry.zi_saptamana]}</td>
+                                            <td>{ZILE[entry.zi]}</td>
                                             <td>{entry.ora_start} – {entry.ora_end}</td>
-                                            <td>
-                                                <span className={styles.materie}>{entry.subjects?.[0]?.name}</span>
-                                                <span className={styles.codMaterie}>{entry.subjects?.[0]?.subject_code}</span>
-                                            </td>
-                                            <td>{entry.teachers?.[0]?.profiles?.[0]?.full_name ?? '—'}</td>
-                                            <td>
-                                                {entry.rooms?.[0]?.building} — {entry.rooms?.[0]?.room_code}
-                                            </td>
+                                            <td>{entry.materie ?? '—'}</td>
+                                            <td>{entry.profiles?.full_name ?? '—'}</td>
                                             <td>
                                                 <span className={entry.saptamana ? styles.badgeSaptamana : styles.badgeSaptamanaToate}>
                                                     {entry.saptamana ?? 'toate'}

@@ -1,66 +1,161 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import styles from './page.module.css'
+import { createClientBrowser } from '../lib/supabase/client'
+import { loadCorpuri } from '../lib/date'
+import { useRouter } from 'next/navigation'
 
 type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string }
 type Sala = { id: string; nume: string; corp: string; locuri: Loc[] }
 type RaportClasa = { grupa: string; facultate: string; totalStudenti: number; prezenti: number; data: string }
-
-const saliDate: Sala[] = [
-    {
-        id: 'c101', nume: 'C101', corp: 'Corp C',
-        locuri: Array.from({ length: 16 }, (_, i) => ({
-            id: i + 1,
-            ocupat: [2, 3, 6, 7, 12].includes(i + 1),
-            student: [2, 3, 6, 7, 12].includes(i + 1) ? `Student ${i + 1}` : undefined,
-            oraIntrare: [2, 3, 6, 7, 12].includes(i + 1) ? '10:05' : undefined,
-        }))
-    },
-    {
-        id: 'c202', nume: 'C202', corp: 'Corp C',
-        locuri: Array.from({ length: 24 }, (_, i) => ({
-            id: i + 1,
-            ocupat: [1, 2, 4, 5, 8, 9, 10, 15].includes(i + 1),
-            student: [1, 2, 4, 5, 8, 9, 10, 15].includes(i + 1) ? `Student ${i + 1}` : undefined,
-            oraIntrare: [1, 2, 4, 5, 8, 9, 10, 15].includes(i + 1) ? '08:10' : undefined,
-        }))
-    },
-    {
-        id: 'a101', nume: 'A101', corp: 'Corp A',
-        locuri: Array.from({ length: 20 }, (_, i) => ({
-            id: i + 1,
-            ocupat: [3, 5, 6, 11, 12, 13].includes(i + 1),
-            student: [3, 5, 6, 11, 12, 13].includes(i + 1) ? `Student ${i + 1}` : undefined,
-            oraIntrare: [3, 5, 6, 11, 12, 13].includes(i + 1) ? '12:15' : undefined,
-        }))
-    },
-]
-
-const rapoarteDate: RaportClasa[] = [
-    { grupa: '3A1', facultate: 'FIESC', totalStudenti: 28, prezenti: 24, data: '01.05.2026' },
-    { grupa: '3A2', facultate: 'FIESC', totalStudenti: 26, prezenti: 18, data: '01.05.2026' },
-    { grupa: '2B1', facultate: 'FIESC', totalStudenti: 30, prezenti: 27, data: '01.05.2026' },
-    { grupa: '2B2', facultate: 'FIESC', totalStudenti: 29, prezenti: 20, data: '01.05.2026' },
-    { grupa: '1C1', facultate: 'FSE', totalStudenti: 25, prezenti: 22, data: '01.05.2026' },
-    { grupa: '4D1', facultate: 'FSE', totalStudenti: 22, prezenti: 15, data: '01.05.2026' },
-]
-
 type Tab = 'sali' | 'rapoarte'
-
 export default function AdminPage() {
+    const supabase = createClientBrowser()
+    const router = useRouter()
     const [tabActiv, setTabActiv] = useState<Tab>('sali')
-    const [salaSelectata, setSalaSelectata] = useState<Sala>(saliDate[0])
+    const [sali, setSali] = useState<Sala[]>([])
+    const [corpSelectat, setCorpSelectat] = useState<string | null>(null)
+    const [salaSelectata, setSalaSelectata] = useState<Sala | null>(null)
+    const [loadingSali, setLoadingSali] = useState(true)
+    const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
 
-    const facultati = ['toate', ...Array.from(new Set(rapoarteDate.map(r => r.facultate)))]
-    const rapoarteFiltrate = filtreFacultate === 'toate'
-        ? rapoarteDate
-        : rapoarteDate.filter(r => r.facultate === filtreFacultate)
+    //  1. săli + prezențe + rapoarte
+    useEffect(() => {
 
-    const prezentiSala = salaSelectata.locuri.filter(l => l.ocupat)
-    const libereSala = salaSelectata.locuri.filter(l => !l.ocupat)
-    const procentSala = Math.round((prezentiSala.length / salaSelectata.locuri.length) * 100)
+        async function init() {
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            if (userError || !user) {
+                router.push('/')
+                return
+            }
+
+            const { data: profilData } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+
+            if (!profilData || profilData.role !== 'admin') {
+                router.push('/')
+                return
+            }
+            const corpuri = await loadCorpuri()
+            const saliReale: Sala[] = corpuri.flatMap(corp =>
+                corp.sali.map(sala => ({
+                    id: sala.id,
+                    nume: sala.nume,
+                    corp: corp.nume,
+                    locuri: sala.locuri.map(loc => ({
+                        id: loc.numar,
+                        ocupat: loc.ocupat,
+                        student: undefined,
+                        oraIntrare: undefined,
+                    }))
+                }))
+            )
+
+            // Prezențe cu nume student
+            const { data: locuriOcupate, error } = await supabase
+                .from('room_seats')
+                .select('room_id, numar, student_id, profiles(full_name)')
+                .eq('ocupat', true)
+
+            console.log('locuriOcupate:', locuriOcupate)
+            console.log('error:', error)
+
+            if (locuriOcupate) {
+                for (const sala of saliReale) {
+                    for (const loc of sala.locuri) {
+                        const ocupare = locuriOcupate.find(
+                            (ocupare: any) => ocupare.room_id === sala.id && ocupare.numar === loc.id
+                        )
+                        if (ocupare) {
+                            loc.student = (ocupare.profiles as any)?.full_name ?? '—'
+                            loc.oraIntrare = ocupare.updated_at
+                                ? new Date(ocupare.updated_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+                                : '—'
+                        }
+                    }
+                }
+            }
+            setSali(saliReale)
+            setSalaSelectata(saliReale[0] ?? null)
+            setLoadingSali(false)
+
+            // Rapoarte pe grupe
+            const azi = new Date().toISOString().split('T')[0]
+            const { data: prezGrupe } = await supabase
+                .from('presences')
+                .select('grupa, student_id')
+                .gte('created_at', azi)
+
+            const { data: totalGrupe } = await supabase
+                .from('profiles')
+                .select('grupa, id')
+                .not('grupa', 'is', null)
+
+            if (prezGrupe && totalGrupe) {
+                const grupe = [...new Set(totalGrupe.map((s: any) => s.grupa))] as string[]
+                const rapoarteReale = grupe.map(grupa => ({
+                    grupa,
+                    facultate: (totalGrupe as any[]).find(s => s.grupa === grupa)?.facultate ?? 'N/A',
+                    totalStudenti: totalGrupe.filter((s: any) => s.grupa === grupa).length,
+                    prezenti: prezGrupe.filter((p: any) => p.grupa === grupa).length,
+                    data: new Date().toLocaleDateString('ro-RO'),
+                }))
+                setRapoarte(rapoarteReale)
+            }
+        }
+        init()
+    }, [])
+
+    useEffect(() => {
+        const channel = supabase
+            .channel('admin-seats')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'room_seats' },
+                (payload: any) => {
+                    const updated = payload.new
+                    const updater = (s: Sala) => s.id !== updated.room_id ? s : {
+                        ...s,
+                        locuri: s.locuri.map(l =>
+                            l.id === updated.numar ? { ...l, ocupat: updated.ocupat } : l
+                        )
+                    }
+                    setSali(prev => prev.map(updater))
+                    setSalaSelectata(prev => prev ? updater(prev) : prev)
+                }
+            )
+            .subscribe()
+        return () => { supabase.removeChannel(channel) }
+    }, [])
+
+    // ── 3. Valori derivate
+    const facultati = ['toate', ...Array.from(new Set(rapoarte.map(r => r.facultate)))]
+    const rapoarteFiltrate = filtreFacultate === 'toate'
+        ? rapoarte
+        : rapoarte.filter(r => r.facultate === filtreFacultate)
+
+    if (loadingSali) {
+        return (
+            <div className={styles.main}>
+                <p style={{ padding: '2rem' }}>Se încarcă...</p>
+            </div>
+        )
+    }
+
+    async function handleDeconectare() {
+        await supabase.auth.signOut()
+        router.push('/')
+    }
+
+    const prezentiSala = salaSelectata?.locuri.filter(l => l.ocupat) ?? []
+    const libereSala = salaSelectata?.locuri.filter(l => !l.ocupat) ?? []
+    const procentSala = (salaSelectata && salaSelectata.locuri.length > 0)
+        ? Math.round((prezentiSala.length / salaSelectata.locuri.length) * 100)
+        : 0
 
     return (
         <div className={styles.main}>
@@ -70,7 +165,7 @@ export default function AdminPage() {
                     <span className={styles.headerBadge}>Admin</span>
                 </div>
                 <div className={styles.headerDreapta}>
-                    <Link href="/" className={styles.butonInapoi}>← Pagina principală</Link>
+                    <Link href="/" className={styles.butonInapoi} onClick={handleDeconectare}>← Deconectare</Link>
                 </div>
             </header>
 
@@ -94,94 +189,146 @@ export default function AdminPage() {
                 {tabActiv === 'sali' && (
                     <div className={styles.saliLayout}>
 
-                        {/* Lista săli */}
+                        {/* SIDEBAR */}
                         <div className={styles.saliSidebar}>
                             <div className={styles.card}>
-                                <h2 className={styles.cardTitlu}>Săli disponibile</h2>
-                                <div className={styles.saliLista}>
-                                    {saliDate.map(sala => {
-                                        const ocp = sala.locuri.filter(l => l.ocupat).length
-                                        const pct = Math.round((ocp / sala.locuri.length) * 100)
-                                        return (
+                                {!corpSelectat ? (
+                                    <>
+                                        <h2 className={styles.cardTitlu}>Selectează corpul</h2>
+                                        <div className={styles.saliLista}>
+                                            {[...new Set(sali.map(s => s.corp))].map(corp => {
+                                                const saliCorp = sali.filter(s => s.corp === corp)
+                                                const totalLocuri = saliCorp.reduce((acc, s) => acc + s.locuri.length, 0)
+                                                const totalOcupate = saliCorp.reduce((acc, s) => acc + s.locuri.filter(l => l.ocupat).length, 0)
+                                                const pct = Math.round((totalOcupate / totalLocuri) * 100) || 0
+                                                return (
+                                                    <button
+                                                        key={corp}
+                                                        className={styles.salaItem}
+                                                        onClick={() => {
+                                                            setCorpSelectat(corp)
+                                                            setSalaSelectata(saliCorp[0])
+                                                        }}
+                                                    >
+                                                        <div className={styles.salaItemHeader}>
+                                                            <span className={styles.salaItemNume}>{corp}</span>
+                                                            <span className={styles.salaItemCorp}>{saliCorp.length} săli</span>
+                                                        </div>
+                                                        <div className={styles.salaItemBar}>
+                                                            <div className={styles.salaItemBarFill} style={{ width: `${pct}%` }} />
+                                                        </div>
+                                                        <div className={styles.salaItemStats}>
+                                                            <span className={styles.verde}>{totalOcupate} ocupate</span>
+                                                            <span className={styles.rosu}>{totalLocuri - totalOcupate} libere</span>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                                             <button
-                                                key={sala.id}
-                                                className={`${styles.salaItem} ${salaSelectata.id === sala.id ? styles.salaItemActiv : ''}`}
-                                                onClick={() => setSalaSelectata(sala)}
+                                                className={styles.butonInapoi}
+                                                onClick={() => {
+                                                    setCorpSelectat(null)
+                                                    setSalaSelectata(null)
+                                                }}
                                             >
-                                                <div className={styles.salaItemHeader}>
-                                                    <span className={styles.salaItemNume}>{sala.nume}</span>
-                                                    <span className={styles.salaItemCorp}>{sala.corp}</span>
-                                                </div>
-                                                <div className={styles.salaItemBar}>
-                                                    <div
-                                                        className={styles.salaItemBarFill}
-                                                        style={{ width: `${pct}%` }}
-                                                    />
-                                                </div>
-                                                <div className={styles.salaItemStats}>
-                                                    <span className={styles.verde}>{ocp} ocupate</span>
-                                                    <span className={styles.rosu}>{sala.locuri.length - ocp} libere</span>
-                                                </div>
+                                                ← Înapoi
                                             </button>
-                                        )
-                                    })}
-                                </div>
+                                            <h2 className={styles.cardTitlu} style={{ margin: 0 }}>{corpSelectat}</h2>
+                                        </div>
+                                        <div className={styles.saliLista}>
+                                            {sali.filter(s => s.corp === corpSelectat).map(sala => {
+                                                const ocp = sala.locuri.filter(l => l.ocupat).length
+                                                const pct = Math.round((ocp / sala.locuri.length) * 100)
+                                                return (
+                                                    <button
+                                                        key={sala.id}
+                                                        className={`${styles.salaItem} ${salaSelectata?.id === sala.id ? styles.salaItemActiv : ''}`}
+                                                        onClick={() => setSalaSelectata(sala)}
+                                                    >
+                                                        <div className={styles.salaItemHeader}>
+                                                            <span className={styles.salaItemNume}>{sala.nume}</span>
+                                                        </div>
+                                                        <div className={styles.salaItemBar}>
+                                                            <div className={styles.salaItemBarFill} style={{ width: `${pct}%` }} />
+                                                        </div>
+                                                        <div className={styles.salaItemStats}>
+                                                            <span className={styles.verde}>{ocp} ocupate</span>
+                                                            <span className={styles.rosu}>{sala.locuri.length - ocp} libere</span>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
-                        {/* Detaliu sală selectată */}
+                        {/* DREAPTA */}
                         <div className={styles.salaDetaliu}>
-                            <div className={styles.card}>
-                                <div className={styles.salaDetaliuHeader}>
-                                    <h2 className={styles.cardTitlu}>Sală {salaSelectata.nume} — {salaSelectata.corp}</h2>
-                                    <div className={styles.salaDetaliuStats}>
-                                        <span className={styles.statChip + ' ' + styles.statVerde}>{prezentiSala.length} ocupate</span>
-                                        <span className={styles.statChip + ' ' + styles.statRosu}>{libereSala.length} libere</span>
-                                        <span className={styles.statChip + ' ' + styles.statAlbastru}>{procentSala}% ocupare</span>
-                                    </div>
+                            {!corpSelectat || !salaSelectata ? (
+                                <div className={styles.salaDetaliuGol}>
+                                    <span className={styles.salaDetaliuGolIcon}>🏛️</span>
+                                    <p>Selectează un corp din stânga pentru a vedea sălile</p>
                                 </div>
-
-                                <div className={styles.tabla}>TABLĂ</div>
-                                <div className={styles.gridLocuri}>
-                                    {salaSelectata.locuri.map(loc => (
-                                        <div
-                                            key={loc.id}
-                                            className={`${styles.loc} ${loc.ocupat ? styles.locOcupat : styles.locLiber}`}
-                                            title={loc.ocupat ? `${loc.student} — ${loc.oraIntrare}` : 'Liber'}
-                                        >
-                                            <span className={styles.locLabel}>loc</span>
-                                            <span className={styles.locNr}>{loc.id}</span>
+                            ) : (
+                                <>
+                                    <div className={styles.card}>
+                                        <div className={styles.salaDetaliuHeader}>
+                                            <h2 className={styles.cardTitlu}>Sală {salaSelectata.nume} — {salaSelectata.corp}</h2>
+                                            <div className={styles.salaDetaliuStats}>
+                                                <span className={`${styles.statChip} ${styles.statVerde}`}>{prezentiSala.length} ocupate</span>
+                                                <span className={`${styles.statChip} ${styles.statRosu}`}>{libereSala.length} libere</span>
+                                                <span className={`${styles.statChip} ${styles.statAlbastru}`}>{procentSala}% ocupare</span>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-
-                                <div className={styles.legenda}>
-                                    <span className={styles.legendaItem}><span className={styles.dotVerde} /> Liber</span>
-                                    <span className={styles.legendaItem}><span className={styles.dotRosu} /> Ocupat</span>
-                                </div>
-                            </div>
-
-                            {/* Prezenți în sala selectată */}
-                            {prezentiSala.length > 0 && (
-                                <div className={styles.card}>
-                                    <h2 className={styles.cardTitlu}>Prezenți în {salaSelectata.nume}</h2>
-                                    <table className={styles.tabel}>
-                                        <thead>
-                                            <tr><th>Loc</th><th>Student</th><th>Ora intrării</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {prezentiSala.map(loc => (
-                                                <tr key={loc.id}>
-                                                    <td><span className={styles.locBadge}>{loc.id}</span></td>
-                                                    <td>{loc.student ?? '—'}</td>
-                                                    <td>{loc.oraIntrare ?? '—'}</td>
-                                                </tr>
+                                        <div className={styles.tabla}>TABLĂ</div>
+                                        <div className={styles.gridLocuri}>
+                                            {salaSelectata.locuri.map(loc => (
+                                                <div
+                                                    key={loc.id}
+                                                    className={`${styles.loc} ${loc.ocupat ? styles.locOcupat : styles.locLiber}`}
+                                                    title={loc.ocupat ? `${loc.student} — ${loc.oraIntrare}` : 'Liber'}
+                                                >
+                                                    <span className={styles.locLabel}>loc</span>
+                                                    <span className={styles.locNr}>{loc.id}</span>
+                                                </div>
                                             ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        </div>
+                                        <div className={styles.legenda}>
+                                            <span className={styles.legendaItem}><span className={styles.dotVerde} /> Liber</span>
+                                            <span className={styles.legendaItem}><span className={styles.dotRosu} /> Ocupat</span>
+                                        </div>
+                                    </div>
+
+                                    {prezentiSala.length > 0 && (
+                                        <div className={styles.card}>
+                                            <h2 className={styles.cardTitlu}>Prezenți în {salaSelectata.nume}</h2>
+                                            <table className={styles.tabel}>
+                                                <thead>
+                                                    <tr><th>Loc</th><th>Student</th><th>Ora intrării</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {prezentiSala.map(loc => (
+                                                        <tr key={loc.id}>
+                                                            <td><span className={styles.locBadge}>{loc.id}</span></td>
+                                                            <td>{loc.student ?? '—'}</td>
+                                                            <td>{loc.oraIntrare ?? '—'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
+
                     </div>
                 )}
 
@@ -203,7 +350,6 @@ export default function AdminPage() {
                                 </select>
                             </div>
                         </div>
-
                         <table className={styles.tabel}>
                             <thead>
                                 <tr>

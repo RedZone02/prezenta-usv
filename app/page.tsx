@@ -1,5 +1,4 @@
 'use client'
-
 import { loadCorpuri } from './lib/date'
 import type { Corp, Sala } from './lib/tipuri'
 import { useEffect, useState } from 'react'
@@ -10,6 +9,7 @@ import LoginButton from './componente/LoginButton'
 import ModalQR from './componente/ModalQR'
 import Drawer from './componente/Drawer'
 import { createClientBrowser } from './lib/supabase/client'
+import { useAutoResetSeats } from './lib/useResetLocuri'
 
 type Profil = {
   id: string
@@ -20,8 +20,6 @@ type Profil = {
 export default function Home() {
   const supabase = createClientBrowser()
   const router = useRouter()
-
-  // 1. corpuri vin din DB, nu mai sunt const mock
   const [corpuri, setCorpuri] = useState<Corp[]>([])
   const [corpSelectat, setCorpSelectat] = useState<Corp | null>(null)
   const [salaSelectata, setSalaSelectata] = useState<Sala | null>(null)
@@ -30,53 +28,40 @@ export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [profil, setProfil] = useState<Profil | null>(null)
   const [loadingSali, setLoadingSali] = useState(true)
+  const [oraAcum, setOraAcum] = useState(() =>
+    new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+  )
+  useAutoResetSeats(supabase, salaSelectata?.id ?? null)
 
-  // 2. încarcă salile din Supabase (prin loadCorpuri)
+  // incarcare sali din Supabase + verificare user logat
   useEffect(() => {
-    async function fetchCorpuri() {
-      const data = await loadCorpuri()
+    async function init() {
+      const [data, { data: { user } }] = await Promise.all([
+        loadCorpuri(),
+        supabase.auth.getUser()
+      ])
       setCorpuri(data)
-      if (data.length > 0) {
-        setCorpSelectat(data[0])
-        if (data[0].sali.length > 0) {
-          setSalaSelectata(data[0].sali[0])
-        }
-      }
+      setCorpSelectat(data[0] ?? null)
+      setSalaSelectata(data[0]?.sali[0] ?? null)
       setLoadingSali(false)
-    }
-    fetchCorpuri()
-  }, [])
 
-  // 3. verifică sesiunea, la fel ca înainte
-  useEffect(() => {
-    async function verificaSesiune() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, role')
-        .eq('id', user.id)
-        .single()
-
-      if (data) {
-        setProfil(data)
-        setLogat(true)
-
-        if (data.role === 'profesor' || data.role === 'admin') {
-          setTimeout(() => {
-            router.push(`/${data.role}`)
-          }, 0)
+      if (user) {
+        const { data: profil } = await supabase
+          .from('profiles').select('id, full_name, role')
+          .eq('id', user.id).single()
+        if (profil) {
+          setProfil(profil)
+          setLogat(true)
+          if (profil.role === 'profesor' || profil.role === 'admin')
+            router.push(`/${profil.role}`)
         }
       }
     }
-
-    verificaSesiune()
-  }, [supabase, router])
+    init()
+  }, [])
 
   useEffect(() => {
     console.log('🟡 Realtime useEffect pornit')
-
     const channel = supabase
       .channel(`room-seats-${Date.now()}`) // nume unic, evită conflicte
       .on(
@@ -128,10 +113,13 @@ export default function Home() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  const oraAcum = new Date().toLocaleTimeString('ro-RO', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  useEffect(() => {
+    const timer = setInterval(() =>
+      setOraAcum(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }))
+      , 10000)
+    return () => clearInterval(timer)
+  }, [])
+
 
   function handleCorpChange(corpId: string) {
     const corp = corpuri.find((c) => c.id === corpId)
@@ -153,9 +141,6 @@ export default function Home() {
     setProfil(null)
     setShowQR(false)
   }
-
-
-
   if (loadingSali || !corpSelectat || !salaSelectata) {
     return (
       <main className={styles.main}>
@@ -168,10 +153,10 @@ export default function Home() {
       </main>
     )
   }
-
   const locuriLibere = salaSelectata.locuri.filter((l) => !l.ocupat).length
   const locuriOcupate = salaSelectata.locuri.filter((l) => l.ocupat).length
 
+  // Afișează banner în funcție de rezultat
 
   return (
     <main className={styles.main}>
@@ -242,19 +227,36 @@ export default function Home() {
                 <span className={styles.infoLabel}>Ora curentă</span>
                 <span className={styles.infoValue}>{oraAcum}</span>
               </div>
+              {/* Interval orar */}
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Interval orar</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.ora}</span>
+                <span className={styles.infoValue}>
+                  {salaSelectata.orar.materie === 'PAUZA' ? '—' : salaSelectata.orar.ora}
+                </span>
               </div>
+
+              {/* Materie */}
               <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Materie</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.materie}</span>
+                <span className={styles.infoLabel}>Materie </span>
+                <span className={salaSelectata.orar.materie === 'PAUZA'
+                  ? styles.orarBannerPauza
+                  : styles.infoValue}>
+                  {salaSelectata.orar.materie === 'PAUZA'
+                    ? `☕ Pauză — ${salaSelectata.orar.ora}`
+                    : salaSelectata.orar.materie}
+                </span>
               </div>
-              <hr className={styles.infoDivider} />
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Profesor</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.profesor}</span>
-              </div>
+
+              {/* Profesor — ascunde la pauză */}
+              {salaSelectata.orar.materie !== 'PAUZA' && (
+                <>
+                  <hr className={styles.infoDivider} />
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Profesor</span>
+                    <span className={styles.infoValue}>{salaSelectata.orar.profesor}</span>
+                  </div>
+                </>
+              )}
               <hr className={styles.infoDivider} />
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Locuri libere</span>
@@ -265,6 +267,7 @@ export default function Home() {
                 <span className={styles.locuriOcupate}>{locuriOcupate}</span>
               </div>
             </div>
+
           </aside>
 
           {/* Centru */}
@@ -334,19 +337,36 @@ export default function Home() {
                 <span className={styles.infoLabel}>Ora curentă</span>
                 <span className={styles.infoValue}>{oraAcum}</span>
               </div>
+              {/* Interval orar */}
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Interval orar</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.ora}</span>
+                <span className={styles.infoValue}>
+                  {salaSelectata.orar.materie === 'PAUZA' ? '—' : salaSelectata.orar.ora}
+                </span>
               </div>
+
+              {/* Materie */}
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Materie</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.materie}</span>
+                <span className={salaSelectata.orar.materie === 'PAUZA'
+                  ? styles.orarBannerPauza
+                  : styles.infoValue}>
+                  {salaSelectata.orar.materie === 'PAUZA'
+                    ? `☕ Pauză — ${salaSelectata.orar.ora}`
+                    : salaSelectata.orar.materie}
+                </span>
               </div>
-              <hr className={styles.infoDivider} />
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Profesor</span>
-                <span className={styles.infoValue}>{salaSelectata.orar.profesor}</span>
-              </div>
+
+              {/* Profesor — ascunde la pauză */}
+              {salaSelectata.orar.materie !== 'PAUZA' && (
+                <>
+                  <hr className={styles.infoDivider} />
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Profesor</span>
+                    <span className={styles.infoValue}>{salaSelectata.orar.profesor}</span>
+                  </div>
+                </>
+              )}
               <hr className={styles.infoDivider} />
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Locuri libere</span>

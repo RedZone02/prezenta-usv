@@ -4,7 +4,7 @@ import { createClientBrowser } from './supabase/client'
 import type { Corp, Sala, Loc } from './tipuri'
 
 // Calculează săptămâna par/impar față de începutul anului școlar
-function getSaptamana(): 'par' | 'impar' {
+export function getSaptamana(): 'par' | 'impar' {
     const startAnScolar = new Date('2025-09-29') // prima luni a anului școlar
     const acum = new Date()
     const saptamaniTrecute = Math.floor(
@@ -35,7 +35,7 @@ export async function loadCorpuri(): Promise<Corp[]> {
     // 3. Orar curent din schedule (zi + oră + săptămână)
     const acum = new Date()
     const ziCurenta = acum.getDay() === 0 ? 7 : acum.getDay() // 1-7 (L-D)
-    const oraAcum = acum.toTimeString().slice(0, 8) //
+    const oraAcum = acum.toTimeString().slice(0, 8)
     const saptamana = getSaptamana()
 
     const { data: schedules } = await supabase

@@ -4,6 +4,8 @@ import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
+import { useAutoResetSeats } from '../lib/useResetLocuri'
+import { getSaptamana } from '../lib/date'
 
 type Loc = {
     id: number
@@ -32,14 +34,6 @@ type OrarCurent = {
 
 type Tab = 'sala' | 'prezenti' | 'statistici'
 
-function getSaptamana(): 'par' | 'impar' {
-    const startAnScolar = new Date('2025-09-29')
-    const acum = new Date()
-    const saptamaniTrecute = Math.floor(
-        (acum.getTime() - startAnScolar.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    )
-    return saptamaniTrecute % 2 === 0 ? 'impar' : 'par'
-}
 
 export default function ProfesorPage() {
     const supabase = createClientBrowser()
@@ -54,17 +48,27 @@ export default function ProfesorPage() {
     const [exportLoading, setExportLoading] = useState(false)
     const ROOM_ID = 'c101'
 
+    useAutoResetSeats(supabase, ROOM_ID)
+
     // Încarcă numele profesorului logat
     useEffect(() => {
         async function fetchProfil() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            if (userError || !user) {
+                router.push('/')
+                return
+            }
             const { data } = await supabase
                 .from('profiles')
                 .select('full_name')
                 .eq('id', user.id)
                 .single()
-            if (data) setNumeProfesor(data.full_name)
+
+            if (!data || data.role !== 'profesor') {
+                router.push('/')
+                return
+            }
+            setNumeProfesor(data.full_name)
         }
         fetchProfil()
     }, [])
@@ -113,7 +117,7 @@ export default function ProfesorPage() {
             const ziAzi = bucuresti.getDay() === 0 ? 7 : bucuresti.getDay()
             const ora = String(bucuresti.getHours()).padStart(2, '0')
             const min = String(bucuresti.getMinutes()).padStart(2, '0')
-            const oraAzi = `${ora}:${min}`
+            const oraAzi = `${ora}:${min}:00`
             const saptamana = getSaptamana()
 
             const { data: orarData } = await supabase
@@ -131,33 +135,31 @@ export default function ProfesorPage() {
                 setStudenti([])
                 return
             }
-
+            if (orarData.materie === 'PAUZA') {
+                setOrarCurent({ ...orarData, materie: '☕ Pauză' })
+                setStudenti([])
+                return
+            }
             setOrarCurent(orarData)
 
             // Studenți înscriși cu date complete pentru export
-            const { data: enrollData } = await supabase
-                .from('enrollments')
-                .select(`
-                    profiles (
-                        id,
-                        full_name,
-                        students ( student_number, grupa )
-                    )
-                `)
-                .eq('schedule_id', orarData.id)
+            const { data: studentiData } = await supabase
+                .from('profiles')
+                .select('id, full_name, nr_matricol, grupa')
+                .eq('grupa', orarData.grupa)
+                .eq('role', 'student')
+                .order('full_name')
 
-            if (enrollData) {
-                const lista = enrollData
-                    .map((e: any) => e.profiles)
-                    .filter(Boolean)
-                    .map((p: any) => ({
-                        id: p.id,
-                        full_name: p.full_name,
-                        student_number: p.students?.student_number ?? '—',
-                        grupa: p.students?.grupa ?? orarData.grupa,
-                    }))
+            if (studentiData) {
+                const lista = studentiData.map((p: any) => ({
+                    id: p.id,
+                    full_name: p.full_name,
+                    student_number: p.nr_matricol ?? '—',
+                    grupa: p.grupa ?? orarData.grupa,
+                }))
                 setStudenti(lista)
             }
+
         }
         fetchStudentiOraActuala()
     }, [])
