@@ -50,22 +50,22 @@ export default function ProfesorPage() {
 
     useAutoResetSeats(supabase, ROOM_ID)
 
-    // Încarcă numele profesorului logat
+    // Încarcă numele profesorului logat si verificare dacă este profesor
     useEffect(() => {
         async function fetchProfil() {
             const { data: { user }, error: userError } = await supabase.auth.getUser()
             if (userError || !user) {
-                router.push('/')
+                router.push('/login')
                 return
             }
             const { data } = await supabase
                 .from('profiles')
-                .select('full_name')
+                .select('full_name, role')
                 .eq('id', user.id)
                 .single()
 
             if (!data || data.role !== 'profesor') {
-                router.push('/')
+                router.push('/login')
                 return
             }
             setNumeProfesor(data.full_name)
