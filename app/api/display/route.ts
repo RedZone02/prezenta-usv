@@ -1,4 +1,3 @@
-// app/api/display/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest) {
     const zi = bucuresti.getDay() === 0 ? 7 : bucuresti.getDay()
     const hh = String(bucuresti.getHours()).padStart(2, '0')
     const mm = String(bucuresti.getMinutes()).padStart(2, '0')
-    const ora = `${hh}:${mm}:00`
+    const ora = `${hh}:${mm}`
     const saptamana = getSaptamana()
 
     const { data: seats } = await supabase

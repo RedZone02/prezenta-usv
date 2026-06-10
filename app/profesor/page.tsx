@@ -4,7 +4,6 @@ import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
-import { useAutoResetSeats } from '../lib/useResetLocuri'
 import { getSaptamana } from '../lib/date'
 
 type Loc = {
@@ -47,8 +46,6 @@ export default function ProfesorPage() {
     const [modalLoc, setModalLoc] = useState<Loc | null>(null)
     const [exportLoading, setExportLoading] = useState(false)
     const ROOM_ID = 'c101'
-
-    useAutoResetSeats(supabase, ROOM_ID)
 
     // Încarcă numele profesorului logat si verificare dacă este profesor
     useEffect(() => {
