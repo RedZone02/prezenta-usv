@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const { data: room_data } = await supabase
         .from('rooms')
         .select('id')
-        .eq('name', room)
+        .eq('id', room.toLowerCase())
         .single()
 
     if (!room_data) {
