@@ -15,9 +15,8 @@ export async function POST(req: NextRequest) {
 
     // 1. Gaseste studentul dupa UID direct din profiles
     const { data: student } = await supabase
-        .from('profiles')
+        .from('rfid_cards')
         .select('id, full_name')
-        .eq('rfid_uid', uid.toUpperCase())
         .single()
 
     if (!student) {
