@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(req: NextRequest) {
+
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     const { uid, room } = await req.json()
 
     if (!uid || !room) {
@@ -15,8 +17,9 @@ export async function POST(req: NextRequest) {
 
     // 1. Gaseste studentul dupa UID direct din profiles
     const { data: student } = await supabase
-        .from('rfid_cards')
+        .from('profiles')
         .select('id, full_name')
+        .eq('rfid_uid', uid.toUpperCase())
         .single()
 
     if (!student) {
