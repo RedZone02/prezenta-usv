@@ -16,12 +16,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Gaseste studentul dupa UID direct din profiles
-    const { data: student } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('rfid_uid', uid.toUpperCase())
-        .single()
+    const normalizedUid = String(uid).trim().toUpperCase()
+    const { data: student, error: studentError } = await supabase
+  .from('profiles')
+  .select('id, full_name, rfid_uid, grupa, role')
+  .eq('rfid_uid', normalizedUid)
+  .maybeSingle()
 
+ const DEBUG = true
+
+if (DEBUG) {
+  return NextResponse.json({
+    received_uid: uid,
+    normalized_uid: normalizedUid,
+    student,
+    studentError
+  })
+}
     if (!student) {
         return NextResponse.json({ error: 'Card necunoscut', uid }, { status: 404 })
     }
