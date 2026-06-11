@@ -23,7 +23,7 @@ type Student = {
     full_name: string
     student_number?: string
     grupa?: string
-    scanat_la?: string | null   
+    scanned_at?: string | null   
 }
 
 
@@ -120,9 +120,9 @@ export default function ProfesorPage() {
             .channel(`attendance-rfid-${Date.now()}`)
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'attendance' },
-                (payload: { new: { student_id: string, scanat_la: string } }) => {
+                (payload: { new: { student_id: string, scanned_at: string } }) => {
     setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
-    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanat_la }))
+    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanned_at }))
 
 }
             )
@@ -196,7 +196,7 @@ export default function ProfesorPage() {
             // Scanări RFID pentru ora curentă
             const { data: scanari } = await supabase
     .from('attendance')
-    .select('student_id, scanat_la')
+    .select('student_id, scanned_at')
     .eq('schedule_id', orarData.id)
 
 if (scanari) {
