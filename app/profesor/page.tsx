@@ -296,7 +296,7 @@ if (scanari) {
             const numeMaterie = orarCurent.materie.replace(/[^a-zA-Z0-9 ]/g, '')
 
             const ws = XLSX.utils.json_to_sheet(randuri)
-            ws['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 12 }, { wch: 12 }]
+            ws['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 12 },{ wch: 12 }, { wch: 12 }]
 
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Prezenta')
