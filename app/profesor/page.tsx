@@ -221,6 +221,8 @@ useEffect(() => {
                 scanari.forEach((s: any) => { oreScanare[s.student_id] = s.scanned_at })
                 setOreScanare(oreScanare)
             }
+
+            
         }
         fetchStudentiOraActuala()
     }, [])
@@ -244,6 +246,7 @@ useEffect(() => {
 
 
     async function asigneazaStudent(studentId: string) {
+        console.log('scheduleId:', scheduleId) 
         if (!modalLoc || !scheduleId) return
 
         // Marchează locul în sală
