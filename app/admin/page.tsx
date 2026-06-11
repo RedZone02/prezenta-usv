@@ -21,7 +21,7 @@ export default function AdminPage() {
     const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
 
-    //  1. săli + prezențe + rapoarte
+    //săli + prezențe + rapoarte
     useEffect(() => {
 
         async function init() {
@@ -57,29 +57,43 @@ export default function AdminPage() {
             )
 
             // Prezențe cu nume student
-            const { data: locuriOcupate, error } = await supabase
-                .from('room_seats')
-                .select('room_id, numar, student_id, profiles(full_name)')
-                .eq('ocupat', true)
+            const { data: locuriOcupate } = await supabase
+    .from('room_seats')
+    .select(`
+        room_id,
+        numar,
+        student_id,
+        profiles(full_name),
+        attendance(scanned_at, schedule_id)
+    `)
+    .eq('ocupat', true)
 
-            console.log('locuriOcupate:', locuriOcupate)
-            console.log('error:', error)
 
             if (locuriOcupate) {
-                for (const sala of saliReale) {
-                    for (const loc of sala.locuri) {
-                        const ocupare = locuriOcupate.find(
-                            (ocupare: any) => ocupare.room_id === sala.id && ocupare.numar === loc.id
-                        )
-                        if (ocupare) {
-                            loc.student = (ocupare.profiles as any)?.full_name ?? '—'
-                            loc.oraIntrare = ocupare.updated_at
-                                ? new Date(ocupare.updated_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
-                                : '—'
-                        }
-                    }
-                }
+    for (const sala of saliReale) {
+        for (const loc of sala.locuri) {
+            const ocupare = locuriOcupate.find(
+                (o: any) => o.room_id === sala.id && o.numar === loc.id
+            )
+            if (ocupare) {
+                loc.student = (ocupare.profiles as any)?.full_name ?? '—'
+                const scanari = (ocupare.attendance as any[]) ?? []
+                const ultimaScanare = scanari
+                    .sort((a: any, b: any) =>
+                        new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime()
+                    )[0]
+
+                loc.oraIntrare = ultimaScanare
+                    ? new Date(ultimaScanare.scanned_at).toLocaleTimeString('ro-RO', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Europe/Bucharest',
+                    })
+                    : '—'
             }
+        }
+    }
+}
             setSali(saliReale)
             setSalaSelectata(saliReale[0] ?? null)
             setLoadingSali(false)
@@ -112,27 +126,53 @@ export default function AdminPage() {
     }, [])
 
     useEffect(() => {
-        const channel = supabase
-            .channel('admin-seats')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'room_seats' },
-                (payload: any) => {
-                    const updated = payload.new
-                    const updater = (s: Sala) => s.id !== updated.room_id ? s : {
-                        ...s,
-                        locuri: s.locuri.map(l =>
-                            l.id === updated.numar ? { ...l, ocupat: updated.ocupat } : l
-                        )
-                    }
-                    setSali(prev => prev.map(updater))
-                    setSalaSelectata(prev => prev ? updater(prev) : prev)
-                }
-            )
-            .subscribe()
-        return () => { supabase.removeChannel(channel) }
-    }, [])
+    const channel = supabase
+        .channel('admin-seats')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'room_seats' },
+            async (payload: any) => {
+                const updated = payload.new
 
-    // ── 3. Valori derivate
+                // Re-fetch locul actualizat cu student + ora intrării
+                const { data: locData } = await supabase
+                    .from('room_seats')
+                    .select(`
+                        room_id, numar, ocupat, student_id,
+                        profiles(full_name),
+                        attendance(scanned_at)
+                    `)
+                    .eq('room_id', updated.room_id)
+                    .eq('numar', updated.numar)
+                    .single()
+
+                const studentNume = (locData?.profiles as any)?.full_name ?? '—'
+                const scanari = (locData?.attendance as any[]) ?? []
+                const ultimaScanare = scanari.sort((a: any, b: any) =>
+                    new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime()
+                )[0]
+                const oraIntrare = ultimaScanare
+                    ? new Date(ultimaScanare.scanned_at).toLocaleTimeString('ro-RO', {
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest'
+                    })
+                    : '—'
+
+                const updater = (s: Sala) => s.id !== updated.room_id ? s : {
+                    ...s,
+                    locuri: s.locuri.map(l =>
+                        l.id === updated.numar
+                            ? { ...l, ocupat: updated.ocupat, student: studentNume, oraIntrare }
+                            : l
+                    )
+                }
+                setSali(prev => prev.map(updater))
+                setSalaSelectata(prev => prev ? updater(prev) : prev)
+            }
+        )
+        .subscribe()
+    return () => { supabase.removeChannel(channel) }
+}, [])
+
+    //Valori derivate
     const facultati = ['toate', ...Array.from(new Set(rapoarte.map(r => r.facultate)))]
     const rapoarteFiltrate = filtreFacultate === 'toate'
         ? rapoarte

@@ -505,7 +505,6 @@ export default function ProfesorPage() {
                                                                 if (locStudent) {
                                                                     await elibereazaLoc(locStudent)
                                                                 }
-                                                                // Indiferent, șterge din attendance și state
                                                                 if (scheduleId) {
                                                                     await supabase
                                                                         .from('attendance')
