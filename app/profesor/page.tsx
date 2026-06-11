@@ -246,6 +246,7 @@ if (scanari) {
             .single()
 
         if (!existing) {
+                    const oraScanare = new Date().toISOString()
             await supabase
                 .from('attendance')
                 .insert({
@@ -255,6 +256,8 @@ if (scanari) {
                     scanned_at: new Date().toISOString(),
                     uid_used: 'manual',
                 })
+                 setOreScanare(prev => ({ ...prev, [studentId]: oraScanare }))
+                 setAttendanceIds(prev => new Set([...prev, studentId]))
         }
 
         setModalLoc(null)
