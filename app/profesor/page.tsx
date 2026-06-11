@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { getSaptamana } from '../lib/date'
 
+
 type Loc = {
     id: number
     numar: number
@@ -16,12 +17,14 @@ type Loc = {
     profiles?: { full_name: string } | null
 }
 
+
 type Student = {
     id: string
     full_name: string
     student_number?: string
     grupa?: string
 }
+
 
 type OrarCurent = {
     id: string
@@ -31,7 +34,9 @@ type OrarCurent = {
     ora_end: string
 } | null
 
+
 type Tab = 'sala' | 'prezenti' | 'statistici'
+
 
 
 export default function ProfesorPage() {
@@ -45,7 +50,10 @@ export default function ProfesorPage() {
     const [numeProfesor, setNumeProfesor] = useState<string>('')
     const [modalLoc, setModalLoc] = useState<Loc | null>(null)
     const [exportLoading, setExportLoading] = useState(false)
+    const [attendanceIds, setAttendanceIds] = useState<Set<string>>(new Set())
+    const [scheduleId, setScheduleId] = useState<string | null>(null)
     const ROOM_ID = 'c101'
+
 
     // Încarcă numele profesorului logat si verificare dacă este profesor
     useEffect(() => {
@@ -61,6 +69,7 @@ export default function ProfesorPage() {
                 .eq('id', user.id)
                 .single()
 
+
             if (!data || data.role !== 'profesor') {
                 router.push('/login')
                 return
@@ -69,6 +78,7 @@ export default function ProfesorPage() {
         }
         fetchProfil()
     }, [])
+
 
     // Încarcă locurile
     useEffect(() => {
@@ -84,7 +94,8 @@ export default function ProfesorPage() {
         fetchLocuri()
     }, [])
 
-    // Realtime
+
+    // Realtime room_seats + attendance
     useEffect(() => {
         async function fetchLocuri() {
             const { data, error } = await supabase
@@ -95,7 +106,7 @@ export default function ProfesorPage() {
             if (!error && data) setLocuri(data)
         }
 
-        const channel = supabase
+        const channelSala = supabase
             .channel(`profesor-room-${Date.now()}`)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'room_seats' },
@@ -103,10 +114,24 @@ export default function ProfesorPage() {
             )
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
+        const channelAttendance = supabase
+            .channel(`attendance-rfid-${Date.now()}`)
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'attendance' },
+                (payload: { new: { student_id: string } }) => {
+    setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
+}
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channelSala)
+            supabase.removeChannel(channelAttendance)
+        }
     }, [])
 
-    // Studenți + orar curent cu filtru săptămână
+
+    // Studenți + orar curent + scanări RFID
     useEffect(() => {
         async function fetchStudentiOraActuala() {
             const acum = new Date()
@@ -116,6 +141,7 @@ export default function ProfesorPage() {
             const min = String(bucuresti.getMinutes()).padStart(2, '0')
             const oraAzi = `${ora}:${min}:00`
             const saptamana = getSaptamana()
+
 
             const { data: orarData } = await supabase
                 .from('schedule')
@@ -127,25 +153,31 @@ export default function ProfesorPage() {
                 .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
                 .single()
 
+
             if (!orarData) {
                 setOrarCurent(null)
                 setStudenti([])
+                setScheduleId(null)
                 return
             }
             if (orarData.materie === 'PAUZA') {
                 setOrarCurent({ ...orarData, materie: '☕ Pauză' })
                 setStudenti([])
+                setScheduleId(null)
                 return
             }
             setOrarCurent(orarData)
+            setScheduleId(orarData.id)
 
-            // Studenți înscriși cu date complete pentru export
+
+            // Studenți înscriși
             const { data: studentiData } = await supabase
                 .from('profiles')
                 .select('id, full_name, nr_matricol, grupa')
                 .eq('grupa', orarData.grupa)
                 .eq('role', 'student')
                 .order('full_name')
+
 
             if (studentiData) {
                 const lista = studentiData.map((p: any) => ({
@@ -157,9 +189,19 @@ export default function ProfesorPage() {
                 setStudenti(lista)
             }
 
+            // Scanări RFID pentru ora curentă
+            const { data: scanari } = await supabase
+                .from('attendance')
+                .select('student_id')
+                .eq('schedule_id', orarData.id)
+
+            if (scanari) {
+                setAttendanceIds(new Set(scanari.map((s: any) => s.student_id)))
+            }
         }
         fetchStudentiOraActuala()
     }, [])
+
 
     function handleClickLoc(loc: Loc) {
         if (loc.ocupat) {
@@ -169,6 +211,7 @@ export default function ProfesorPage() {
         }
     }
 
+
     async function elibereazaLoc(loc: Loc) {
         await supabase
             .from('room_seats')
@@ -176,19 +219,53 @@ export default function ProfesorPage() {
             .eq('id', loc.id)
     }
 
+
     async function asigneazaStudent(studentId: string) {
-        if (!modalLoc) return
+        if (!modalLoc || !scheduleId) return
+
+        // Marchează locul în sală
         await supabase
             .from('room_seats')
             .update({ ocupat: true, student_id: studentId })
             .eq('id', modalLoc.id)
+
+        // Inserează în attendance dacă nu există deja
+        const { data: existing } = await supabase
+            .from('attendance')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('schedule_id', scheduleId)
+            .single()
+
+        if (!existing) {
+            await supabase
+                .from('attendance')
+                .insert({
+                    student_id: studentId,
+                    schedule_id: scheduleId,
+                    room_id: ROOM_ID,
+                    scanned_at: new Date().toISOString(),
+                    uid_used: 'manual',
+                })
+        }
+
         setModalLoc(null)
     }
+
 
     async function handleDeconectare() {
         await supabase.auth.signOut()
         router.push('/')
     }
+
+
+    // Calculează prezenți din ambele surse
+    const prezentiIds = new Set([
+        ...locuri.filter(l => l.ocupat && l.student_id).map(l => l.student_id as string),
+        ...attendanceIds,
+    ])
+    const nrPrezentiTotal = studenti.filter(s => prezentiIds.has(s.id)).length
+
 
     // Export Excel
     async function handleExportExcel() {
@@ -196,13 +273,6 @@ export default function ProfesorPage() {
         setExportLoading(true)
 
         try {
-            // Setul de student_id-uri prezente în sală
-            const prezentiIds = new Set(
-                locuri
-                    .filter(l => l.ocupat && l.student_id)
-                    .map(l => l.student_id)
-            )
-
             const randuri = studenti.map(s => ({
                 'Nr. Matricol': s.student_number ?? '—',
                 'Nume Student': s.full_name,
@@ -214,34 +284,28 @@ export default function ProfesorPage() {
             const numeMaterie = orarCurent.materie.replace(/[^a-zA-Z0-9 ]/g, '')
 
             const ws = XLSX.utils.json_to_sheet(randuri)
-
-            // Lățimi coloane
-            ws['!cols'] = [
-                { wch: 16 },
-                { wch: 30 },
-                { wch: 12 },
-                { wch: 12 },
-            ]
+            ws['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 12 }, { wch: 12 }]
 
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Prezenta')
-
             XLSX.writeFile(wb, `Prezenta_${numeMaterie}_${dataAzi}.xlsx`)
         } finally {
             setExportLoading(false)
         }
     }
 
+
     const prezenti = locuri.filter(l => l.ocupat)
     const libere = locuri.filter(l => !l.ocupat)
-    const procent = locuri.length > 0 ? Math.round((prezenti.length / locuri.length) * 100) : 0
+    const procent = studenti.length > 0 ? Math.round((nrPrezentiTotal / studenti.length) * 100) : 0
+
 
     if (loading) return (
         <div className={styles.main}>
             <p style={{ padding: '2rem' }}>Se încarcă...</p>
         </div>
     )
-
+    
     return (
         <div className={styles.main}>
             <header className={styles.header}>
