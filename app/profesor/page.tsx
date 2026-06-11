@@ -23,7 +23,7 @@ type Student = {
     full_name: string
     student_number?: string
     grupa?: string
-    scanned_at?: string | null   
+    scanned_at?: string | null
 }
 
 
@@ -121,10 +121,10 @@ export default function ProfesorPage() {
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'attendance' },
                 (payload: { new: { student_id: string, scanned_at: string } }) => {
-    setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
-    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanned_at }))
+                    setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
+                    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanned_at }))
 
-}
+                }
             )
             .subscribe()
 
@@ -195,17 +195,17 @@ export default function ProfesorPage() {
 
             // Scanări RFID pentru ora curentă
             const { data: scanari } = await supabase
-    .from('attendance')
-    .select('student_id, scanned_at')
-    .eq('schedule_id', orarData.id)
+                .from('attendance')
+                .select('student_id, scanned_at')
+                .eq('schedule_id', orarData.id)
 
-if (scanari) {
-    setAttendanceIds(new Set(scanari.map((s: any) => s.student_id)))
-    // Salvează ora scanării per student
-    const oreScanare: Record<string, string> = {}
-    scanari.forEach((s: any) => { oreScanare[s.student_id] = s.scanned_at })
-    setOreScanare(oreScanare)
-}
+            if (scanari) {
+                setAttendanceIds(new Set(scanari.map((s: any) => s.student_id)))
+                // Salvează ora scanării per student
+                const oreScanare: Record<string, string> = {}
+                scanari.forEach((s: any) => { oreScanare[s.student_id] = s.scanned_at })
+                setOreScanare(oreScanare)
+            }
         }
         fetchStudentiOraActuala()
     }, [])
@@ -240,24 +240,27 @@ if (scanari) {
         // Inserează în attendance dacă nu există deja
         const { data: existing } = await supabase
             .from('attendance')
-            .select('id')
+            .select('id, scanned_at')
             .eq('student_id', studentId)
             .eq('schedule_id', scheduleId)
             .single()
 
         if (!existing) {
-                    const oraScanare = new Date().toISOString()
+            const oraScanare = new Date().toISOString()
             await supabase
                 .from('attendance')
                 .insert({
                     student_id: studentId,
                     schedule_id: scheduleId,
                     room_id: ROOM_ID,
-                    scanned_at: new Date().toISOString(),
+                    scanned_at: oraScanare,
                     uid_used: 'manual',
                 })
-                 setOreScanare(prev => ({ ...prev, [studentId]: oraScanare }))
-                 setAttendanceIds(prev => new Set([...prev, studentId]))
+            setOreScanare(prev => ({ ...prev, [studentId]: oraScanare }))
+            setAttendanceIds(prev => new Set([...prev, studentId]))
+        } else {
+            setOreScanare(prev => ({ ...prev, [studentId]: existing.scanned_at }))
+            setAttendanceIds(prev => new Set([...prev, studentId]))
         }
 
         setModalLoc(null)
@@ -289,14 +292,14 @@ if (scanari) {
                 'Nume Student': s.full_name,
                 'Grupă': s.grupa ?? '—',
                 'Ora intrării': oreScanare[s.id] ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }) : '—',
-                'Prezent': prezentiIds.has(s.id) ? 'Prezent' : 'Absent',
+                'Prezent': prezentiIds.has(s.id) ? 'Prezent(ă)' : 'Absent(ă)',
             }))
 
             const dataAzi = new Date().toLocaleDateString('ro-RO')
             const numeMaterie = orarCurent.materie.replace(/[^a-zA-Z0-9 ]/g, '')
 
             const ws = XLSX.utils.json_to_sheet(randuri)
-            ws['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 12 },{ wch: 12 }, { wch: 12 }]
+            ws['!cols'] = [{ wch: 16 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
 
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Prezenta')
@@ -464,17 +467,17 @@ if (scanari) {
                                                         {estePrezent ? '🟢 Prezent' : '🔴 Absent'}
                                                     </span>
                                                 </td>
-                                                
-<td>
-    {oreScanare[s.id]
-        ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/Bucharest'
-          })
-        : '—'
-    }
-</td>
+
+                                                <td>
+                                                    {oreScanare[s.id]
+                                                        ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                            timeZone: 'Europe/Bucharest'
+                                                        })
+                                                        : '—'
+                                                    }
+                                                </td>
                                                 <td>
                                                     {estePrezent && (
                                                         <button
