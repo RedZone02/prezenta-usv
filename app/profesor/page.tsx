@@ -305,7 +305,8 @@ export default function ProfesorPage() {
             <p style={{ padding: '2rem' }}>Se încarcă...</p>
         </div>
     )
-    
+
+
     return (
         <div className={styles.main}>
             <header className={styles.header}>
@@ -323,7 +324,9 @@ export default function ProfesorPage() {
                 </div>
             </header>
 
+
             <div className={styles.container}>
+
 
                 {/* Banner orar curent */}
                 {orarCurent ? (
@@ -339,10 +342,11 @@ export default function ProfesorPage() {
                     </div>
                 )}
 
+
                 <div className={styles.infoBar}>
                     {[
                         { label: 'Sală', value: ROOM_ID.toUpperCase() },
-                        { label: 'Prezenți', value: prezenti.length, cls: styles.verde },
+                        { label: 'Prezenți', value: nrPrezentiTotal, cls: styles.verde },
                         { label: 'Locuri libere', value: libere.length, cls: styles.rosu },
                     ].map(({ label, value, cls }) => (
                         <div key={label} className={styles.infoBarItem}>
@@ -352,10 +356,11 @@ export default function ProfesorPage() {
                     ))}
                 </div>
 
+
                 <div className={styles.tabs}>
                     {([
                         { key: 'sala', label: '🪑 Vizualizare Sală' },
-                        { key: 'prezenti', label: `👥 Prezenți (${prezenti.length})` },
+                        { key: 'prezenti', label: `👥 Prezenți (${nrPrezentiTotal})` },
                         { key: 'statistici', label: '📊 Statistici' },
                     ] as { key: Tab; label: string }[]).map(t => (
                         <button
@@ -365,6 +370,7 @@ export default function ProfesorPage() {
                         >{t.label}</button>
                     ))}
                 </div>
+
 
                 {/* TAB SALĂ */}
                 {tabActiv === 'sala' && (
@@ -393,6 +399,7 @@ export default function ProfesorPage() {
                     </div>
                 )}
 
+
                 {/* TAB PREZENȚI */}
                 {tabActiv === 'prezenti' && (
                     <div className={styles.card}>
@@ -409,6 +416,7 @@ export default function ProfesorPage() {
                                 {exportLoading ? '⏳ Se exportă...' : '📥 Export Excel'}
                             </button>
                         </div>
+
 
                         {studenti.length === 0 ? (
                             <p className={styles.gol}>
@@ -432,7 +440,7 @@ export default function ProfesorPage() {
                                         const locStudent = locuri.find(
                                             l => l.ocupat && l.student_id === s.id
                                         )
-                                        const estePrezent = !!locStudent
+                                        const estePrezent = !!locStudent || attendanceIds.has(s.id)
                                         return (
                                             <tr key={s.id}>
                                                 <td>{s.student_number ?? '—'}</td>
@@ -462,13 +470,14 @@ export default function ProfesorPage() {
                     </div>
                 )}
 
+
                 {/* TAB STATISTICI */}
                 {tabActiv === 'statistici' && (
                     <div className={styles.statisticiWrap}>
                         <div className={styles.statisticiGrid}>
                             {[
-                                { nr: prezenti.length, label: 'Prezenți', cls: styles.statVerde },
-                                { nr: studenti.length - prezenti.length, label: 'Absenți', cls: styles.statRosu },
+                                { nr: nrPrezentiTotal, label: 'Prezenți', cls: styles.statVerde },
+                                { nr: studenti.length - nrPrezentiTotal, label: 'Absenți', cls: styles.statRosu },
                                 { nr: studenti.length, label: 'Total înscriși', cls: styles.statAlbastru },
                                 { nr: `${procent}%`, label: 'Grad ocupare', cls: styles.statPortocaliu },
                             ].map(({ nr, label, cls }) => (
@@ -484,11 +493,12 @@ export default function ProfesorPage() {
                                 <div className={styles.statBarFill} style={{ width: `${procent}%` }} />
                             </div>
                             <p className={styles.statBarText}>
-                                {prezenti.length} din {studenti.length} studenți prezenți ({procent}%)
+                                {nrPrezentiTotal} din {studenti.length} studenți prezenți ({procent}%)
                             </p>
                         </div>
                     </div>
                 )}
+
 
                 {/* MODAL SELECTARE STUDENT */}
                 {modalLoc && (
