@@ -243,7 +243,7 @@ export default function ProfesorPage() {
             .select('id, scanned_at')
             .eq('student_id', studentId)
             .eq('schedule_id', scheduleId)
-            .single()
+            .maybeSingle()
 
         if (!existing) {
             const oraScanare = new Date().toISOString()
