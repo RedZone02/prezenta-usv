@@ -23,16 +23,6 @@ export async function POST(req: NextRequest) {
   .eq('rfid_uid', normalizedUid)
   .maybeSingle()
 
- const DEBUG = false
-
-if (DEBUG) {
-  return NextResponse.json({
-    received_uid: uid,
-    normalized_uid: normalizedUid,
-    student,
-    studentError
-  })
-}
     if (!student) {
         return NextResponse.json({ error: 'Card necunoscut', uid }, { status: 404 })
     }
@@ -61,6 +51,17 @@ if (DEBUG) {
         .lte('ora_start', oraAcum)
         .gte('ora_end', oraAcum)
         .maybeSingle()
+
+const DEBUG = true
+
+if (DEBUG) {
+  return NextResponse.json({
+  zi,
+  oraAcum,
+  room: room_data.id
+})
+}
+
 
     if (!orar) {
         return NextResponse.json({ error: 'Nu exista ora activa', uid }, { status: 409 })
