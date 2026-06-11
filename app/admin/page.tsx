@@ -10,6 +10,7 @@ type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string 
 type Sala = { id: string; nume: string; corp: string; locuri: Loc[] }
 type RaportClasa = { grupa: string; facultate: string; totalStudenti: number; prezenti: number; data: string }
 type Tab = 'sali' | 'rapoarte'
+
 export default function AdminPage() {
     const supabase = createClientBrowser()
     const router = useRouter()
@@ -21,9 +22,8 @@ export default function AdminPage() {
     const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
 
-    //săli + prezențe + rapoarte
+    // săli + prezențe + rapoarte
     useEffect(() => {
-
         async function init() {
             const { data: { user }, error: userError } = await supabase.auth.getUser()
             if (userError || !user) {
@@ -41,6 +41,7 @@ export default function AdminPage() {
                 router.push('/')
                 return
             }
+
             const corpuri = await loadCorpuri()
             const saliReale: Sala[] = corpuri.flatMap(corp =>
                 corp.sali.map(sala => ({
@@ -56,58 +57,65 @@ export default function AdminPage() {
                 }))
             )
 
-            // Prezențe cu nume student
+            // locuri ocupate cu numele studentului
             const { data: locuriOcupate } = await supabase
-    .from('room_seats')
-    .select(`
-        room_id,
-        numar,
-        student_id,
-        profiles(full_name),
-        attendance(scanned_at, schedule_id)
-    `)
-    .eq('ocupat', true)
+                .from('room_seats')
+                .select('room_id, numar, student_id, profiles(full_name)')
+                .eq('ocupat', true)
 
+            // scanările de azi din attendance
+            const azi = new Date().toISOString().split('T')[0]
+            const { data: scanari } = await supabase
+                .from('attendance')
+                .select('student_id, scanned_at')
+                .gte('scanned_at', azi)
 
-            if (locuriOcupate) {
-    for (const sala of saliReale) {
-        for (const loc of sala.locuri) {
-            const ocupare = locuriOcupate.find(
-                (o: any) => o.room_id === sala.id && o.numar === loc.id
-            )
-            if (ocupare) {
-                loc.student = (ocupare.profiles as any)?.full_name ?? '—'
-                const scanari = (ocupare.attendance as any[]) ?? []
-                const ultimaScanare = scanari
-                    .sort((a: any, b: any) =>
-                        new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime()
-                    )[0]
-
-                loc.oraIntrare = ultimaScanare
-                    ? new Date(ultimaScanare.scanned_at).toLocaleTimeString('ro-RO', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone: 'Europe/Bucharest',
-                    })
-                    : '—'
+            // Map student_id fiind cea mai recentă scanare
+            const scanariMap: Record<string, string> = {}
+            if (scanari) {
+                scanari.forEach((s: any) => {
+                    if (!scanariMap[s.student_id] || s.scanned_at > scanariMap[s.student_id]) {
+                        scanariMap[s.student_id] = s.scanned_at
+                    }
+                })
             }
-        }
-    }
-}
+
+            // Populează locurile cu student + oră
+            if (locuriOcupate) {
+                for (const sala of saliReale) {
+                    for (const loc of sala.locuri) {
+                        const ocupare = locuriOcupate.find(
+                            (o: any) => o.room_id === sala.id && o.numar === loc.id
+                        )
+                        if (ocupare) {
+                            loc.student = (ocupare.profiles as any)?.full_name ?? '—'
+                            const scanned = ocupare.student_id ? scanariMap[ocupare.student_id] : null
+                            loc.oraIntrare = scanned
+                                ? new Date(scanned).toLocaleTimeString('ro-RO', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    timeZone: 'Europe/Bucharest',
+                                })
+                                : '—'
+                        }
+                    }
+                }
+            }
+
             setSali(saliReale)
             setSalaSelectata(saliReale[0] ?? null)
             setLoadingSali(false)
 
-            // Rapoarte pe grupe
-            const azi = new Date().toISOString().split('T')[0]
+            // Rapoarte pe grupe 
             const { data: prezGrupe } = await supabase
-                .from('presences')
-                .select('grupa, student_id')
-                .gte('created_at', azi)
+                .from('attendance')
+                .select('student_id, profiles(grupa)')
+                .gte('scanned_at', azi)
 
             const { data: totalGrupe } = await supabase
                 .from('profiles')
                 .select('grupa, id')
+                .eq('role', 'student')
                 .not('grupa', 'is', null)
 
             if (prezGrupe && totalGrupe) {
@@ -116,7 +124,7 @@ export default function AdminPage() {
                     grupa,
                     facultate: (totalGrupe as any[]).find(s => s.grupa === grupa)?.facultate ?? 'N/A',
                     totalStudenti: totalGrupe.filter((s: any) => s.grupa === grupa).length,
-                    prezenti: prezGrupe.filter((p: any) => p.grupa === grupa).length,
+                    prezenti: prezGrupe.filter((p: any) => (p.profiles as any)?.grupa === grupa).length,
                     data: new Date().toLocaleDateString('ro-RO'),
                 }))
                 setRapoarte(rapoarteReale)
@@ -125,54 +133,62 @@ export default function AdminPage() {
         init()
     }, [])
 
+    // Realtime room_seats
     useEffect(() => {
-    const channel = supabase
-        .channel('admin-seats')
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'room_seats' },
-            async (payload: any) => {
-                const updated = payload.new
+        const channel = supabase
+            .channel('admin-seats')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'room_seats' },
+                async (payload: any) => {
+                    const updated = payload.new
 
-                // Re-fetch locul actualizat cu student + ora intrării
-                const { data: locData } = await supabase
-                    .from('room_seats')
-                    .select(`
-                        room_id, numar, ocupat, student_id,
-                        profiles(full_name),
-                        attendance(scanned_at)
-                    `)
-                    .eq('room_id', updated.room_id)
-                    .eq('numar', updated.numar)
-                    .single()
+                    // Re-fetch locul cu student + scanare
+                    const { data: locData } = await supabase
+                        .from('room_seats')
+                        .select('room_id, numar, ocupat, student_id, profiles(full_name)')
+                        .eq('room_id', updated.room_id)
+                        .eq('numar', updated.numar)
+                        .single()
 
-                const studentNume = (locData?.profiles as any)?.full_name ?? '—'
-                const scanari = (locData?.attendance as any[]) ?? []
-                const ultimaScanare = scanari.sort((a: any, b: any) =>
-                    new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime()
-                )[0]
-                const oraIntrare = ultimaScanare
-                    ? new Date(ultimaScanare.scanned_at).toLocaleTimeString('ro-RO', {
-                        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest'
-                    })
-                    : '—'
+                    const studentNume = (locData?.profiles as any)?.full_name ?? '—'
+                    let oraIntrare = '—'
+                    if (locData?.student_id) {
+                        const azi = new Date().toISOString().split('T')[0]
+                        const { data: scanare } = await supabase
+                            .from('attendance')
+                            .select('scanned_at')
+                            .eq('student_id', locData.student_id)
+                            .gte('scanned_at', azi)
+                            .order('scanned_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle()
 
-                const updater = (s: Sala) => s.id !== updated.room_id ? s : {
-                    ...s,
-                    locuri: s.locuri.map(l =>
-                        l.id === updated.numar
-                            ? { ...l, ocupat: updated.ocupat, student: studentNume, oraIntrare }
-                            : l
-                    )
+                        if (scanare) {
+                            oraIntrare = new Date(scanare.scanned_at).toLocaleTimeString('ro-RO', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Europe/Bucharest',
+                            })
+                        }
+                    }
+
+                    const updater = (s: Sala) => s.id !== updated.room_id ? s : {
+                        ...s,
+                        locuri: s.locuri.map(l =>
+                            l.id === updated.numar
+                                ? { ...l, ocupat: updated.ocupat, student: studentNume, oraIntrare }
+                                : l
+                        )
+                    }
+                    setSali(prev => prev.map(updater))
+                    setSalaSelectata(prev => prev ? updater(prev) : prev)
                 }
-                setSali(prev => prev.map(updater))
-                setSalaSelectata(prev => prev ? updater(prev) : prev)
-            }
-        )
-        .subscribe()
-    return () => { supabase.removeChannel(channel) }
-}, [])
+            )
+            .subscribe()
+        return () => { supabase.removeChannel(channel) }
+    }, [])
 
-    //Valori derivate
+    // Valori derivate
     const facultati = ['toate', ...Array.from(new Set(rapoarte.map(r => r.facultate)))]
     const rapoarteFiltrate = filtreFacultate === 'toate'
         ? rapoarte
