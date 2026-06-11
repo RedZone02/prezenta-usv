@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   .eq('rfid_uid', normalizedUid)
   .maybeSingle()
 
- const DEBUG = true
+ const DEBUG = false
 
 if (DEBUG) {
   return NextResponse.json({
@@ -120,15 +120,13 @@ const { error: insertError } = await supabase
   })
 
     if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 })
-    }
-    console.log('KEY starts with:', process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20))
-    // 7. Returneaza raspuns succes
-    return NextResponse.json({
-        status: 'ok',
-        message: 'Prezenta inregistrata',
-        student: student.full_name ?? 'Student',
-        materie: orar.materie,
-        seat: seat?.numar ?? null
-    }, { status: 200 })
+  return NextResponse.json({ error: insertError.message }, { status: 500 })
 }
+
+return NextResponse.json({
+  status: 'ok',
+  message: 'Prezenta inregistrata',
+  student: student.full_name ?? 'Student',
+  materie: orar.materie,
+  seat: freeSeat.numar
+}, { status: 200 })
