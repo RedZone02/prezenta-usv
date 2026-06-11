@@ -98,56 +98,56 @@ export default function ProfesorPage() {
 
 
     // Realtime room_seats + attendance
-   useEffect(() => {
-    async function fetchLocuri() {
-        const { data, error } = await supabase
-            .from('room_seats')
-            .select('*, profiles(full_name)')
-            .eq('room_id', ROOM_ID)
-            .order('numar')
-        if (!error && data) setLocuri(data)
-    }
+    useEffect(() => {
+        async function fetchLocuri() {
+            const { data, error } = await supabase
+                .from('room_seats')
+                .select('*, profiles(full_name)')
+                .eq('room_id', ROOM_ID)
+                .order('numar')
+            if (!error && data) setLocuri(data)
+        }
 
-    const channelSala = supabase
-        .channel(`profesor-room-${Date.now()}`)
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'room_seats' },
-            () => { fetchLocuri() }
-        )
-        .subscribe()
+        const channelSala = supabase
+            .channel(`profesor-room-${Date.now()}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'room_seats' },
+                () => { fetchLocuri() }
+            )
+            .subscribe()
 
-    return () => {
-        supabase.removeChannel(channelSala)
-    }
-}, [])
+        return () => {
+            supabase.removeChannel(channelSala)
+        }
+    }, [])
 
-useEffect(() => {
-    if (!scheduleId) return
+    useEffect(() => {
+        if (!scheduleId) return
 
-    const channelAttendance = supabase
-        .channel(`attendance-rfid-${scheduleId}`)
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'attendance',
-                filter: `schedule_id=eq.${scheduleId}`,
-            },
-            (payload: { new: { student_id: string; scanned_at: string } }) => {
-                setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
-                setOreScanare(prev => ({
-                    ...prev,
-                    [payload.new.student_id]: new Date(payload.new.scanned_at).toISOString(),
-                }))
-            }
-        )
-        .subscribe()
+        const channelAttendance = supabase
+            .channel(`attendance-rfid-${scheduleId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'attendance',
+                    filter: `schedule_id=eq.${scheduleId}`,
+                },
+                (payload: { new: { student_id: string; scanned_at: string } }) => {
+                    setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
+                    setOreScanare(prev => ({
+                        ...prev,
+                        [payload.new.student_id]: new Date(payload.new.scanned_at).toISOString(),
+                    }))
+                }
+            )
+            .subscribe()
 
-    return () => {
-        supabase.removeChannel(channelAttendance)
-    }
-}, [scheduleId])
+        return () => {
+            supabase.removeChannel(channelAttendance)
+        }
+    }, [scheduleId])
 
 
     // Studenți + orar curent + scanări RFID
@@ -222,7 +222,7 @@ useEffect(() => {
                 setOreScanare(oreScanare)
             }
 
-            
+
         }
         fetchStudentiOraActuala()
     }, [])
@@ -246,7 +246,7 @@ useEffect(() => {
 
 
     async function asigneazaStudent(studentId: string) {
-        console.log('scheduleId:', scheduleId) 
+        console.log('scheduleId:', scheduleId)
         if (!modalLoc || !scheduleId) return
 
         // Marchează locul în sală
@@ -278,7 +278,7 @@ useEffect(() => {
             setAttendanceIds(prev => new Set([...prev, studentId]))
         } else {
             setOreScanare(prev => ({ ...prev, [studentId]: new Date(existing.scanned_at).toISOString() }))
-    setAttendanceIds(prev => new Set([...prev, studentId]))
+            setAttendanceIds(prev => new Set([...prev, studentId]))
         }
 
         setModalLoc(null)
@@ -500,7 +500,30 @@ useEffect(() => {
                                                     {estePrezent && (
                                                         <button
                                                             className={styles.butonElimina}
-                                                            onClick={() => elibereazaLoc(locStudent!)}
+                                                            onClick={async () => {
+                                                                // Dacă are loc fizic, eliberează locul
+                                                                if (locStudent) {
+                                                                    await elibereazaLoc(locStudent)
+                                                                }
+                                                                // Indiferent, șterge din attendance și state
+                                                                if (scheduleId) {
+                                                                    await supabase
+                                                                        .from('attendance')
+                                                                        .delete()
+                                                                        .eq('student_id', s.id)
+                                                                        .eq('schedule_id', scheduleId)
+                                                                }
+                                                                setAttendanceIds(prev => {
+                                                                    const next = new Set(prev)
+                                                                    next.delete(s.id)
+                                                                    return next
+                                                                })
+                                                                setOreScanare(prev => {
+                                                                    const next = { ...prev }
+                                                                    delete next[s.id]
+                                                                    return next
+                                                                })
+                                                            }}
                                                         >
                                                             Eliberează
                                                         </button>
