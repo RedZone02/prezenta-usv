@@ -23,6 +23,7 @@ type Student = {
     full_name: string
     student_number?: string
     grupa?: string
+    scanat_la?: string | null   
 }
 
 
@@ -52,6 +53,7 @@ export default function ProfesorPage() {
     const [exportLoading, setExportLoading] = useState(false)
     const [attendanceIds, setAttendanceIds] = useState<Set<string>>(new Set())
     const [scheduleId, setScheduleId] = useState<string | null>(null)
+    const [oreScanare, setOreScanare] = useState<Record<string, string>>({})
     const ROOM_ID = 'c101'
 
 
@@ -118,8 +120,10 @@ export default function ProfesorPage() {
             .channel(`attendance-rfid-${Date.now()}`)
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'attendance' },
-                (payload: { new: { student_id: string } }) => {
+                (payload: { new: { student_id: string, scanat_la: string } }) => {
     setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
+    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanat_la }))
+
 }
             )
             .subscribe()
@@ -191,13 +195,17 @@ export default function ProfesorPage() {
 
             // Scanări RFID pentru ora curentă
             const { data: scanari } = await supabase
-                .from('attendance')
-                .select('student_id')
-                .eq('schedule_id', orarData.id)
+    .from('attendance')
+    .select('student_id, scanat_la')
+    .eq('schedule_id', orarData.id)
 
-            if (scanari) {
-                setAttendanceIds(new Set(scanari.map((s: any) => s.student_id)))
-            }
+if (scanari) {
+    setAttendanceIds(new Set(scanari.map((s: any) => s.student_id)))
+    // Salvează ora scanării per student
+    const oreScanare: Record<string, string> = {}
+    scanari.forEach((s: any) => { oreScanare[s.student_id] = s.scanned_at })
+    setOreScanare(oreScanare)
+}
         }
         fetchStudentiOraActuala()
     }, [])
@@ -432,6 +440,7 @@ export default function ProfesorPage() {
                                         <th>Nume student</th>
                                         <th>Grupă</th>
                                         <th>Status</th>
+                                        <th>Ora scanării</th>
                                         <th>Acțiuni</th>
                                     </tr>
                                 </thead>
@@ -451,6 +460,17 @@ export default function ProfesorPage() {
                                                         {estePrezent ? '🟢 Prezent' : '🔴 Absent'}
                                                     </span>
                                                 </td>
+                                                
+<td>
+    {oreScanare[s.id]
+        ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Bucharest'
+          })
+        : '—'
+    }
+</td>
                                                 <td>
                                                     {estePrezent && (
                                                         <button

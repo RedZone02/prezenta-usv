@@ -121,7 +121,6 @@ export async function POST(req: NextRequest) {
     .update({ ocupat: true, student_id: student.id })
     .eq('room_id', room_data.id)
     .eq('numar', freeSeat.numar)
-    
     if (seatUpdateError) {
         return NextResponse.json({ error: seatUpdateError.message }, { status: 500 })
     }
