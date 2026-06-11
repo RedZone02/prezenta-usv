@@ -83,25 +83,41 @@ if (DEBUG) {
             scanned_at: existent.scanned_at
         }, { status: 200 })
     }
+// 5. Gaseste primul loc liber din sala
+const { data: freeSeat, error: freeSeatError } = await supabase
+  .from('room_seats')
+  .select('numar')
+  .eq('room_id', room_data!.id)
+  .eq('ocupat', false)
+  .order('numar', { ascending: true })
+  .limit(1)
+  .maybeSingle()
 
-    // 5. Gaseste locul studentului in sala
-    const { data: seat } = await supabase
-        .from('room_seats')
-        .select('numar')
-        .eq('room_id', room_data.id)
-        .eq('student_id', student.id)
-        .maybeSingle()
+if (freeSeatError || !freeSeat) {
+  return NextResponse.json({ error: 'Nu mai exista locuri libere' }, { status: 409 })
+}
 
-    // 6. Insereaza prezenta
-    const { error: insertError } = await supabase
-        .from('attendance')
-        .insert({
-            student_id: student.id,
-            schedule_id: orar.id,
-            room_id: room_data.id,
-            seat_number: seat?.numar ?? null,
-            uid_used: uid.toUpperCase(),
-        })
+// 6. Marcheaza locul ca ocupat
+const { error: seatUpdateError } = await supabase
+  .from('room_seats')
+  .update({ ocupat: true })
+  .eq('room_id', room_data!.id)
+  .eq('numar', freeSeat.numar)
+
+if (seatUpdateError) {
+  return NextResponse.json({ error: seatUpdateError.message }, { status: 500 })
+}
+
+// 7. Insereaza prezenta
+const { error: insertError } = await supabase
+  .from('attendance')
+  .insert({
+    student_id: student!.id,
+    schedule_id: orar!.id,
+    room_id: room_data!.id,
+    seat_number: freeSeat.numar,
+    uid_used: normalizedUid,
+  })
 
     if (insertError) {
         return NextResponse.json({ error: insertError.message }, { status: 500 })
