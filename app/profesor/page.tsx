@@ -288,6 +288,7 @@ if (scanari) {
                 'Nr. Matricol': s.student_number ?? '—',
                 'Nume Student': s.full_name,
                 'Grupă': s.grupa ?? '—',
+                'Ora intrării': oreScanare[s.id] ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }) : '—',
                 'Prezent': prezentiIds.has(s.id) ? 'Prezent' : 'Absent',
             }))
 
