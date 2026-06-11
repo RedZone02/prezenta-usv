@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         .select('id, materie, grupa')
         .eq('room_id', room_data.id)
         .eq('zi', zi)
-        .eq('saptamana', saptamana)
+        //.eq('saptamana', saptamana)
         .lte('ora_start', oraAcum)
         .gte('ora_end', oraAcum)
         .maybeSingle()
