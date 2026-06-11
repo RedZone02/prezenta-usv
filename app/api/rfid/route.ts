@@ -130,3 +130,4 @@ return NextResponse.json({
   materie: orar.materie,
   seat: freeSeat.numar
 }, { status: 200 })
+}
