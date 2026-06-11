@@ -98,41 +98,56 @@ export default function ProfesorPage() {
 
 
     // Realtime room_seats + attendance
-    useEffect(() => {
-        async function fetchLocuri() {
-            const { data, error } = await supabase
-                .from('room_seats')
-                .select('*, profiles(full_name)')
-                .eq('room_id', ROOM_ID)
-                .order('numar')
-            if (!error && data) setLocuri(data)
-        }
+   useEffect(() => {
+    async function fetchLocuri() {
+        const { data, error } = await supabase
+            .from('room_seats')
+            .select('*, profiles(full_name)')
+            .eq('room_id', ROOM_ID)
+            .order('numar')
+        if (!error && data) setLocuri(data)
+    }
 
-        const channelSala = supabase
-            .channel(`profesor-room-${Date.now()}`)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'room_seats' },
-                () => { fetchLocuri() }
-            )
-            .subscribe()
+    const channelSala = supabase
+        .channel(`profesor-room-${Date.now()}`)
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'room_seats' },
+            () => { fetchLocuri() }
+        )
+        .subscribe()
 
-        const channelAttendance = supabase
-            .channel(`attendance-rfid-${Date.now()}`)
-            .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'attendance' },
-                (payload: { new: { student_id: string, scanned_at: string } }) => {
-                    setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
-                    setOreScanare(prev => ({ ...prev, [payload.new.student_id]: payload.new.scanned_at }))
+    return () => {
+        supabase.removeChannel(channelSala)
+    }
+}, [])
 
-                }
-            )
-            .subscribe()
+useEffect(() => {
+    if (!scheduleId) return
 
-        return () => {
-            supabase.removeChannel(channelSala)
-            supabase.removeChannel(channelAttendance)
-        }
-    }, [])
+    const channelAttendance = supabase
+        .channel(`attendance-rfid-${scheduleId}`)
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'attendance',
+                filter: `schedule_id=eq.${scheduleId}`,
+            },
+            (payload: { new: { student_id: string; scanned_at: string } }) => {
+                setAttendanceIds(prev => new Set([...prev, payload.new.student_id]))
+                setOreScanare(prev => ({
+                    ...prev,
+                    [payload.new.student_id]: new Date(payload.new.scanned_at).toISOString(),
+                }))
+            }
+        )
+        .subscribe()
+
+    return () => {
+        supabase.removeChannel(channelAttendance)
+    }
+}, [scheduleId])
 
 
     // Studenți + orar curent + scanări RFID
@@ -259,8 +274,8 @@ export default function ProfesorPage() {
             setOreScanare(prev => ({ ...prev, [studentId]: oraScanare }))
             setAttendanceIds(prev => new Set([...prev, studentId]))
         } else {
-            setOreScanare(prev => ({ ...prev, [studentId]: existing.scanned_at }))
-            setAttendanceIds(prev => new Set([...prev, studentId]))
+            setOreScanare(prev => ({ ...prev, [studentId]: new Date(existing.scanned_at).toISOString() }))
+    setAttendanceIds(prev => new Set([...prev, studentId]))
         }
 
         setModalLoc(null)
