@@ -21,7 +21,8 @@ export default function AdminPage() {
     const [loadingSali, setLoadingSali] = useState(true)
     const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
-
+console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20))
     // săli + prezențe + rapoarte
     useEffect(() => {
         async function init() {
@@ -35,8 +36,7 @@ export default function AdminPage() {
                 .from('profiles')
                 .select('role')
                 .eq('id', user.id)
-                .single()
-
+.maybeSingle()
             if (!profilData || profilData.role !== 'admin') {
                 router.push('/')
                 return
