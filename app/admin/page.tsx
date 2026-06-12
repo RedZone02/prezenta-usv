@@ -65,13 +65,19 @@ console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20))
 
             // scanările de azi din attendance
             const azi = new Date().toISOString().split('T')[0]
-            const { data: scanari } = await supabase
-                .from('attendance')
-                .select('student_id, scanned_at')
-                .gte('scanned_at', azi)
+             const { data: scanari, error: scanariError } = await supabase
+    .from('attendance')
+    .select('student_id, scanned_at')
+    .gte('scanned_at', azi)
 
             // Map student_id fiind cea mai recentă scanare
             const scanariMap: Record<string, string> = {}
+
+console.log('azi:', azi)
+console.log('scanari:', scanari)
+console.log('scanariError:', scanariError)
+console.log('scanariMap:', scanariMap)
+console.log('locuriOcupate:', locuriOcupate)
             if (scanari) {
                 scanari.forEach((s: any) => {
                     if (!scanariMap[s.student_id] || s.scanned_at > scanariMap[s.student_id]) {
