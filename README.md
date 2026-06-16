@@ -6,9 +6,3 @@ Tehnologii folosite:
         TypeScript
         CSS Modules
         React (useState, hooks)
-
-În lucru / Urmează:
-        Integrare librărie QR real (qrcode.react)
-        Pagina /admin — panou cu statistici și prezențe
-        Pagina /afisor-sala — ecran cu locurile pentru afișaj sală
-        Conectare Supabase — bază de date și real-time

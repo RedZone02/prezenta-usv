@@ -209,6 +209,28 @@
     font-weight: 600;
 }
 
+CSS
+
+/* Stare QR Indisponibil */
+.qrIndisponibilBox {
+    text-align: center;
+    padding: 1rem 0.5rem;
+}
+
+.qrIndisponibilTitlu {
+    color: #ef4444;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+}
+
+.qrIndisponibilText {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+}
+
 .butonMeniu {
     display: flex;
     align-items: center;

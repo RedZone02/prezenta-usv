@@ -32,7 +32,6 @@ export default function Home() {
     new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
   )
   useAutoResetSeats(supabase, salaSelectata?.id ?? null)
-
   // incarcare sali din Supabase + verificare user logat
   useEffect(() => {
     async function init() {
@@ -155,7 +154,8 @@ export default function Home() {
   }
   const locuriLibere = salaSelectata.locuri.filter((l) => !l.ocupat).length
   const locuriOcupate = salaSelectata.locuri.filter((l) => l.ocupat).length
-
+  const materie = salaSelectata.orar.materie;
+  const oraValida = materie && materie !== 'Nicio oră în desfășurare' && materie !== 'PAUZA' && materie !== 'Fara ora';
   // Afișează banner în funcție de rezultat
 
   return (
@@ -280,15 +280,26 @@ export default function Home() {
             {logat && (
               <>
                 <div className={styles.qrCard}>
-                  <button
-                    className={styles.butonQR}
-                    onClick={() => setShowQR(true)}
-                  >
-                    Generează cod QR
-                  </button>
+                  {oraValida ? (
+                    <button
+                      className={styles.butonQR}
+                      onClick={() => setShowQR(true)}
+                    >
+                      Generează cod QR
+                    </button>
+                  ) : (
+                    <div className={styles.qrIndisponibilBox}>
+                      <p className={styles.qrIndisponibilTitlu}>
+                        Cod QR indisponibil
+                      </p>
+                      <p className={styles.qrIndisponibilText}>
+                        Nu poți marca prezența deoarece nu există nicio oră în desfășurare.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {showQR && (
+                {showQR && oraValida && (
                   <ModalQR
                     studentId={profil?.id ?? ''}
                     numeStudent={profil?.full_name ?? ''}

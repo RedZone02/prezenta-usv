@@ -27,6 +27,7 @@ type OrarEntry = {
     ora_start: string
     ora_end: string
     grupa: string
+    room_id: string | null
     saptamana: 'par' | 'impar' | null
     materie: string
     profiles: { full_name: string } | null
@@ -93,6 +94,7 @@ export default function StudentPage() {
                     ora_start,
                     ora_end,
                     grupa,
+                    room_id,
                     saptamana,
                     materie,
                     profesor_id,
@@ -102,7 +104,6 @@ export default function StudentPage() {
                 .or(`saptamana.is.null,saptamana.eq.${getSaptamana()}`)
                 .order('zi', { ascending: true })
                 .order('ora_start', { ascending: true })
-
             setOrar((orarData as OrarEntry[]) ?? [])
             setLoading(false)
         }
@@ -114,7 +115,9 @@ export default function StudentPage() {
         await supabase.auth.signOut()
         router.push('/')
     }
-
+    async function butonInapoi() {
+        router.push('/')
+    }
     if (loading) {
         return (
             <main className={styles.main}>
@@ -130,7 +133,9 @@ export default function StudentPage() {
             <header className={styles.header}>
                 <h1 className={styles.headerTitlu}>Sistem Prezență USV</h1>
                 <div className={styles.headerDreapta}>
-                    <span className={styles.numeStudent}>{profil?.full_name}</span>
+                    <span className={styles.butonInapoi} onClick={butonInapoi}>
+                        Inapoi
+                    </span>
                     <button className={styles.butonLogout} onClick={handleLogout}>
                         Deconectare
                     </button>
@@ -211,6 +216,7 @@ export default function StudentPage() {
                                                     {entry.saptamana ?? 'toate'}
                                                 </span>
                                             </td>
+                                            <td>{entry.room_id ?? '—'}</td>
                                         </tr>
                                     ))}
                                 </tbody>

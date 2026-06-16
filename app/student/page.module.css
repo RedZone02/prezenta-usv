@@ -253,3 +253,15 @@
     font-weight: 600;
     text-transform: uppercase;
 }
+
+.butonInapoi {
+    padding: 0.45rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}

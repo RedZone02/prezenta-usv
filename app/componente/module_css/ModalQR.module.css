@@ -190,3 +190,46 @@
 .butonReinnoieste:hover {
     background: #0c4e54;
 }
+
+.succesContainer {
+    text-align: center;
+    padding: 2rem 0;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.succesIcon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.succesTitlu {
+    color: #059669;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.succesText {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Mesaj Loading */
+.loadingText {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

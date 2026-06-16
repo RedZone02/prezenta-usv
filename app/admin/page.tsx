@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string }
 type Sala = { id: string; nume: string; corp: string; locuri: Loc[] }
 type RaportClasa = { grupa: string; facultate: string; totalStudenti: number; prezenti: number; data: string }
-type Tab = 'sali' | 'rapoarte'
+type Tab = 'sali' | 'rapoarte' | 'cautare'
 
 export default function AdminPage() {
     const supabase = createClientBrowser()
@@ -21,8 +21,26 @@ export default function AdminPage() {
     const [loadingSali, setLoadingSali] = useState(true)
     const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
-console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20))
+    const [cautareNume, setCautareNume] = useState('')
+    const [rezultatCautare, setRezultatCautare] = useState<{
+        id: string
+        nume: string
+        grupa: string
+        facultate: string
+        prezente: {
+            data: string
+            ora: string
+            sala: string
+            metoda: 'QR' | 'RFID' | 'MANUAL'
+            profesor: string
+            curs: string
+        }[]
+    } | null>(null)
+
+    const [cautareLoading, setCautareLoading] = useState(false)
+    const [cautareEroare, setCautareEroare] = useState<string | null>(null)
+
+
     // săli + prezențe + rapoarte
     useEffect(() => {
         async function init() {
@@ -36,7 +54,7 @@ console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20))
                 .from('profiles')
                 .select('role')
                 .eq('id', user.id)
-.maybeSingle()
+                .maybeSingle()
             if (!profilData || profilData.role !== 'admin') {
                 router.push('/')
                 return
@@ -65,19 +83,13 @@ console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20))
 
             // scanările de azi din attendance
             const azi = new Date().toISOString().split('T')[0]
-             const { data: scanari, error: scanariError } = await supabase
-    .from('attendance')
-    .select('student_id, scanned_at')
-    .gte('scanned_at', azi)
+            const { data: scanari, error: scanariError } = await supabase
+                .from('attendance')
+                .select('student_id, scanned_at')
+                .gte('scanned_at', azi)
 
             // Map student_id fiind cea mai recentă scanare
             const scanariMap: Record<string, string> = {}
-
-console.log('azi:', azi)
-console.log('scanari:', scanari)
-console.log('scanariError:', scanariError)
-console.log('scanariMap:', scanariMap)
-console.log('locuriOcupate:', locuriOcupate)
             if (scanari) {
                 scanari.forEach((s: any) => {
                     if (!scanariMap[s.student_id] || s.scanned_at > scanariMap[s.student_id]) {
@@ -120,7 +132,7 @@ console.log('locuriOcupate:', locuriOcupate)
 
             const { data: totalGrupe } = await supabase
                 .from('profiles')
-                .select('grupa, id')
+                .select('grupa, id, facultate')
                 .eq('role', 'student')
                 .not('grupa', 'is', null)
 
@@ -212,6 +224,103 @@ console.log('locuriOcupate:', locuriOcupate)
         await supabase.auth.signOut()
         router.push('/')
     }
+    async function handleCautareStudent() {
+        if (!cautareNume.trim()) return
+        setCautareLoading(true)
+        setCautareEroare(null)
+        setRezultatCautare(null)
+
+        const { data: student } = await supabase
+            .from('profiles')
+            .select('id, full_name, grupa, facultate')
+            .ilike('full_name', `%${cautareNume.trim()}%`)
+            .eq('role', 'student')
+            .limit(1)
+            .maybeSingle()
+
+        if (!student) {
+            setCautareEroare('Niciun student găsit cu acest nume.')
+            setCautareLoading(false)
+            return
+        }
+
+        // Ia toate prezențele studentului
+        const { data: prezente } = await supabase
+            .from('attendance')
+            .select('scanned_at, room_id, uid_used')
+            .eq('student_id', student.id)
+            .order('scanned_at', { ascending: false })
+
+        const roomIds = [...new Set((prezente ?? []).map((p: any) => p.room_id).filter(Boolean))]
+
+        // Preia schedule cu profesor + curs
+        let infoPerPrezenta: Record<string, { profesor: string; curs: string }> = {}
+
+        if (prezente && prezente.length > 0) {
+            const { data: scheduleData } = await supabase
+                .from('schedule')
+                .select('room_id, ora_start, ora_end, zi, materie, profiles(full_name)')
+
+            if (scheduleData) {
+                prezente.forEach((p: any) => {
+                    const data = new Date(p.scanned_at)
+
+                    // zi 1=luni ... 7=duminică (ca în baza ta de date)
+                    let ziDb = data.getDay() // 0=duminică, 1=luni...
+                    if (ziDb === 0) ziDb = 7
+
+                    const oraTime = data.toLocaleTimeString('ro-RO', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Europe/Bucharest',
+                    }).slice(0, 5)
+
+                    const match = (scheduleData as any[]).find(s =>
+                        s.room_id === p.room_id &&
+                        s.zi === ziDb &&
+                        oraTime >= s.ora_start.slice(0, 5) &&
+                        oraTime <= s.ora_end.slice(0, 5)
+                    )
+
+                    infoPerPrezenta[p.scanned_at] = {
+                        profesor: (match?.profiles as any)?.full_name ?? '—',
+                        curs: match?.materie ?? '—',
+                    }
+                })
+            }
+        }
+
+        const saliMap = Object.fromEntries(sali.map(s => [s.id, s.nume]))
+
+        const listaRezultate = (prezente ?? []).map((p: any) => {
+            const uid = (p.uid_used ?? '').toLowerCase()
+            let metoda: 'QR' | 'RFID' | 'MANUAL' = 'RFID'
+            if (uid === 'qr_auth') metoda = 'QR'
+            else if (uid === 'manual') metoda = 'MANUAL'
+
+            return {
+                data: new Date(p.scanned_at).toLocaleDateString('ro-RO'),
+                ora: new Date(p.scanned_at).toLocaleTimeString('ro-RO', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Europe/Bucharest',
+                }),
+                sala: saliMap[p.room_id] ?? p.room_id ?? '—',
+                metoda,
+                profesor: infoPerPrezenta[p.scanned_at]?.profesor ?? '—',
+                curs: infoPerPrezenta[p.scanned_at]?.curs ?? '—',
+            }
+        })
+
+        setRezultatCautare({
+            id: student.id,
+            nume: student.full_name,
+            grupa: student.grupa ?? '—',
+            facultate: student.facultate ?? '—',
+            prezente: listaRezultate,
+        })
+        setCautareLoading(false)
+    }
 
     const prezentiSala = salaSelectata?.locuri.filter(l => l.ocupat) ?? []
     const libereSala = salaSelectata?.locuri.filter(l => !l.ocupat) ?? []
@@ -238,6 +347,7 @@ console.log('locuriOcupate:', locuriOcupate)
                     {([
                         { key: 'sali', label: '🏛️ Vizualizare Săli' },
                         { key: 'rapoarte', label: '📋 Rapoarte Prezență' },
+                        { key: 'cautare', label: '🔍 Căutare Student' },
                     ] as { key: Tab; label: string }[]).map(t => (
                         <button
                             key={t.key}
@@ -438,7 +548,7 @@ console.log('locuriOcupate:', locuriOcupate)
                                                         className={styles.raportBarFill}
                                                         style={{
                                                             width: `${pct}%`,
-                                                            background: pct >= 75 ? 'var(--verde)' : pct >= 50 ? 'var(--portocaliu)' : 'var(--rosu)'
+                                                            background: pct >= 75 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#dc2626'
                                                         }}
                                                     />
                                                     <span className={styles.raportPct}>{pct}%</span>
@@ -452,7 +562,89 @@ console.log('locuriOcupate:', locuriOcupate)
                         </table>
                     </div>
                 )}
+                {/* TAB CĂUTARE STUDENT */}
+                {tabActiv === 'cautare' && (
+                    <div className={styles.card}>
+                        <h2 className={styles.cardTitlu}>Caută prezența unui student</h2>
 
+                        <div className={styles.cautareForm}>
+                            <input
+                                type="text"
+                                placeholder="Introdu numele studentului..."
+                                value={cautareNume}
+                                onChange={e => setCautareNume(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleCautareStudent()}
+                                className={styles.cautareInput}
+                            />
+                            <button
+                                className={styles.cautareButon}
+                                onClick={handleCautareStudent}
+                                disabled={cautareLoading}
+                            >
+                                {cautareLoading ? 'Se caută...' : 'Caută'}
+                            </button>
+                        </div>
+                        {cautareEroare && (
+                            <p className={styles.cautareEroare}>{cautareEroare}</p>
+                        )}
+
+                        {rezultatCautare && (
+                            <>
+                                <div className={styles.rezultatHeader}>
+                                    <span className={styles.rezultatNume}>{rezultatCautare.nume}</span>
+                                    <span className={styles.locBadge}>{rezultatCautare.grupa}</span>
+                                    <span className={styles.rezultatFacultate}>{rezultatCautare.facultate}</span>
+                                    <span className={styles.rezultatTotal}>
+                                        {rezultatCautare.prezente.length} prezențe înregistrate
+                                    </span>
+                                </div>
+
+                                {/* Tabel */}
+                                {rezultatCautare.prezente.length === 0 ? (
+                                    <p style={{ color: 'var(--gri)' }}>Nicio prezență înregistrată.</p>
+                                ) : (
+                                    <table className={styles.tabel}>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Data</th>
+                                                <th>Ora</th>
+                                                <th>Sala</th>
+                                                <th>Curs</th>
+                                                <th>Metodă</th>
+                                                <th>Profesor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rezultatCautare.prezente.map((p, i) => (
+                                                <tr key={i}>
+                                                    <td>{i + 1}</td>
+                                                    <td>{p.data}</td>
+                                                    <td>{p.ora}</td>
+                                                    <td>{p.sala}</td>
+                                                    <td>{p.curs}</td>
+                                                    <td>
+                                                        <span
+                                                            className={`${styles.metodaBadge} ${p.metoda === 'QR'
+                                                                ? styles.metodaQR
+                                                                : p.metoda === 'MANUAL'
+                                                                    ? styles.metodaManual
+                                                                    : styles.metodaRFID
+                                                                }`}
+                                                        >
+                                                            {p.metoda}
+                                                        </span>
+                                                    </td>
+                                                    <td>{p.profesor}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )

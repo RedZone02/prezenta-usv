@@ -468,3 +468,127 @@
     font-size: 2.5rem;
     opacity: 0.4;
 }
+
+/* CĂUTARE STUDENT */
+
+.cautareForm {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.cautareInput {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cautareInput:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    background: #fff;
+}
+
+.cautareInput::placeholder {
+    color: #9ca3af;
+}
+
+.cautareButon {
+    padding: 0.6rem 1.4rem;
+    border-radius: 8px;
+    border: none;
+    background: #6366f1;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+}
+
+.cautareButon:hover {
+    background: #4f46e5;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.cautareButon:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* REZULTAT STUDENT */
+
+.rezultatHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border, #2a2a3a);
+}
+
+.rezultatNume {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text, #000000);
+}
+
+.rezultatFacultate {
+    font-size: 0.85rem;
+    color: var(--gri, #6b6b80);
+    margin-left: auto;
+}
+
+.rezultatTotal {
+    font-size: 0.9rem;
+    color: var(--verde, #4caf81);
+    font-weight: 600;
+}
+
+.cautareEroare {
+    color: var(--rosu, #e05c5c);
+    font-size: 0.92rem;
+    margin-bottom: 1rem;
+    padding: 0.6rem 1rem;
+    background: #ecebeb;
+    border-radius: 8px;
+    border-left: 3px solid var(--rosu, #e05c5c);
+}
+
+/*BADGE METODĂ (QR / RFID)*/
+
+.metodaBadge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.metodaQR {
+    background: rgba(79, 142, 247, 0.15);
+    color: var(--albastru, #4f8ef7);
+    border: 1px solid rgba(79, 142, 247, 0.3);
+}
+
+.metodaRFID {
+    background: rgba(255, 160, 60, 0.13);
+    color: var(--portocaliu, #ffa03c);
+    border: 1px solid rgba(255, 160, 60, 0.3);
+}
+
+.metodaManual {
+    background: rgba(34, 197, 94, 0.14);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.28);
+}
