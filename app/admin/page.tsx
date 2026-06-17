@@ -251,7 +251,7 @@ export default function AdminPage() {
     }, [salaSelectata, supabase])
 
     // FUNCȚII ACȚIUNI
-    const [profesori, setProfesori] = useState([]);
+    const [profesori, setProfesori] = useState<{ id: string, full_name: string }[]>([]);
 
     useEffect(() => {
         const fetchProfesori = async () => {
