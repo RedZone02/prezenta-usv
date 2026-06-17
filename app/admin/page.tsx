@@ -549,66 +549,121 @@ export default function AdminPage() {
                                         </div>
 
                                         {/* BANNER ORAR / ADĂUGARE ORĂ */}
-                                        <div style={{ padding: '1rem', background: 'var(--bg-secundar, #f8f9fa)', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border, #e5e7eb)' }}>
-                                            {showModalOrar && (
-                                                <div className={styles.modalOverlay}>
-                                                    <div className={`${styles.card} ${styles.modalContainer}`}>
-                                                        <h3 className={`${styles.cardTitlu} ${styles.modalHeader}`}>
-                                                            Adaugă oră nouă în {salaSelectata?.nume}
-                                                        </h3>
+                                        <div style={{
+                                            padding: '1rem',
+                                            background: 'var(--bg-secundar, #f8f9fa)',
+                                            borderRadius: '8px',
+                                            marginBottom: '1.5rem',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            border: '1px solid var(--border, #e5e7eb)'
+                                        }}>
+                                            {/* Info orar curent */}
+                                            <div>
+                                                {orarCurent ? (
+                                                    <span style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 600 }}>
+                                                        📅 {orarCurent.materie} — Grupa {orarCurent.grupa}
+                                                        <span style={{ fontWeight: 400, color: '#64748b', marginLeft: '0.5rem' }}>
+                                                            {orarCurent.ora_start?.slice(0, 5)} – {orarCurent.ora_end?.slice(0, 5)}
+                                                        </span>
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                                                        Nu există oră programată în acest moment.
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                                        <form onSubmit={handleAdaugaOraAdHoc} className={styles.modalForm}>
-
-                                                            {/* Materie */}
-                                                            <input
-                                                                type="text" required className={`${styles.select} ${styles.modalInput}`}
-                                                                placeholder="Materie (ex: Programare Web)"
-                                                                value={formOrar.materie}
-                                                                onChange={e => setFormOrar({ ...formOrar, materie: e.target.value })}
-                                                            />
-
-                                                            {/* Grupa */}
-                                                            <input
-                                                                type="text" required className={`${styles.select} ${styles.modalInput}`}
-                                                                placeholder="Grupa (ex: 3131A)"
-                                                                value={formOrar.grupa}
-                                                                onChange={e => setFormOrar({ ...formOrar, grupa: e.target.value })}
-                                                            />
-
-                                                            {/* Profesor */}
-                                                            <select
-                                                                required
-                                                                className={`${styles.select} ${styles.modalInput}`}
-                                                                value={formOrar.profesor_id}
-                                                                onChange={e => setFormOrar({ ...formOrar, profesor_id: e.target.value })}
-                                                            >
-                                                                <option value="">-- Selectează un profesor --</option>
-                                                                {profesori.map(p => (
-                                                                    <option key={p.id} value={p.id}>{p.full_name}</option>
-                                                                ))}
-                                                            </select>
-
-                                                            {/* Ore */}
-                                                            <div className={styles.modalRow}>
-                                                                <input type="time" required className={`${styles.select} ${styles.modalInput}`} value={formOrar.ora_start} onChange={e => setFormOrar({ ...formOrar, ora_start: e.target.value })} />
-                                                                <input type="time" required className={`${styles.select} ${styles.modalInput}`} value={formOrar.ora_end} onChange={e => setFormOrar({ ...formOrar, ora_end: e.target.value })} />
-                                                            </div>
-
-                                                            {/* Butoane */}
-                                                            <div className={styles.modalActions}>
-                                                                <button type="button" className={`${styles.modalBtn} ${styles.modalBtnCancel}`} onClick={() => setShowModalOrar(false)}>
-                                                                    Anulează
-                                                                </button>
-                                                                <button type="submit" className={`${styles.modalBtn} ${styles.modalBtnSave}`} disabled={salvareLoading}>
-                                                                    {salvareLoading ? 'Se salvează...' : 'Salvează ora'}
-                                                                </button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* ✅ BUTONUL CARE DESCHIDE MODALUL */}
+                                            <button
+                                                type="button"
+                                                className={styles.cautareButon}
+                                                onClick={() => {
+                                                    setFormOrar({ materie: '', grupa: '', profesor_id: '', ora_start: '', ora_end: '' })
+                                                    setShowModalOrar(true)
+                                                }}
+                                            >
+                                                + Adaugă oră ad-hoc
+                                            </button>
                                         </div>
 
+                                        {/* ✅ MODALUL SCOS DIN INTERIORUL DIV-ULUI — montat direct în fluxul principal */}
+                                        {showModalOrar && (
+                                            <div className={styles.modalOverlay}>
+                                                <div className={`${styles.card} ${styles.modalContainer}`}>
+                                                    <h3 className={`${styles.cardTitlu} ${styles.modalHeader}`}>
+                                                        Adaugă oră nouă în {salaSelectata?.nume}
+                                                    </h3>
+
+                                                    <form onSubmit={handleAdaugaOraAdHoc} className={styles.modalForm}>
+
+                                                        {/* Materie */}
+                                                        <input
+                                                            type="text" required
+                                                            className={`${styles.select} ${styles.modalInput}`}
+                                                            placeholder="Materie (ex: Programare Web)"
+                                                            value={formOrar.materie}
+                                                            onChange={e => setFormOrar({ ...formOrar, materie: e.target.value })}
+                                                        />
+
+                                                        {/* Grupa */}
+                                                        <input
+                                                            type="text" required
+                                                            className={`${styles.select} ${styles.modalInput}`}
+                                                            placeholder="Grupa (ex: 3131A)"
+                                                            value={formOrar.grupa}
+                                                            onChange={e => setFormOrar({ ...formOrar, grupa: e.target.value })}
+                                                        />
+
+                                                        {/* Profesor */}
+                                                        <select
+                                                            required
+                                                            className={`${styles.select} ${styles.modalInput}`}
+                                                            value={formOrar.profesor_id}
+                                                            onChange={e => setFormOrar({ ...formOrar, profesor_id: e.target.value })}
+                                                        >
+                                                            <option value="">-- Selectează un profesor --</option>
+                                                            {profesori.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.full_name}</option>
+                                                            ))}
+                                                        </select>
+
+                                                        {/* Ore */}
+                                                        <div className={styles.modalRow}>
+                                                            <input type="time" required
+                                                                className={`${styles.select} ${styles.modalInput}`}
+                                                                value={formOrar.ora_start}
+                                                                onChange={e => setFormOrar({ ...formOrar, ora_start: e.target.value })}
+                                                            />
+                                                            <input type="time" required
+                                                                className={`${styles.select} ${styles.modalInput}`}
+                                                                value={formOrar.ora_end}
+                                                                onChange={e => setFormOrar({ ...formOrar, ora_end: e.target.value })}
+                                                            />
+                                                        </div>
+
+                                                        {/* Butoane */}
+                                                        <div className={styles.modalActions}>
+                                                            <button
+                                                                type="button"
+                                                                className={`${styles.modalBtn} ${styles.modalBtnCancel}`}
+                                                                onClick={() => setShowModalOrar(false)}
+                                                            >
+                                                                Anulează
+                                                            </button>
+                                                            <button
+                                                                type="submit"
+                                                                className={`${styles.modalBtn} ${styles.modalBtnSave}`}
+                                                                disabled={salvareLoading}
+                                                            >
+                                                                {salvareLoading ? 'Se salvează...' : 'Salvează ora'}
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className={styles.tabla}>TABLĂ</div>
                                         <div className={styles.gridLocuri}>
                                             {salaSelectata.locuri.map(loc => (
