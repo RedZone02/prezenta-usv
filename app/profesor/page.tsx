@@ -65,6 +65,7 @@ export default function ProfesorPage() {
     const [scheduleId, setScheduleId] = useState<string | null>(null)
     const [attendanceIds, setAttendanceIds] = useState<Set<string>>(new Set())
     const [oreScanare, setOreScanare] = useState<Record<string, string>>({})
+    const [persoaneSenzor, setPersoaneSenzor] = useState<number>(0)
     const ROOM_ID = 'c101'
 
     /* Autentificare & Verificare Rol Profesor */
@@ -99,8 +100,22 @@ export default function ProfesorPage() {
             if (!error && data) setLocuri(data)
             setLoading(false)
         }
-
         fetchLocuri()
+
+        async function fetchSenzori() {
+            const { data } = await supabase.from('rooms').select('persoane_prezente').eq('id', ROOM_ID).single()
+            if (data) setPersoaneSenzor(data.persoane_prezente || 0)
+        }
+        fetchSenzori()
+        const channelSenzori = supabase
+            .channel(`profesor-senzori-${ROOM_ID}`)
+            .on('postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${ROOM_ID}` },
+                (payload: any) => {
+                    setPersoaneSenzor(payload.new.persoane_prezente)
+                }
+            )
+            .subscribe()
 
         const channelSala = supabase
             .channel(`profesor-room-${ROOM_ID}`)
@@ -376,6 +391,7 @@ export default function ProfesorPage() {
                         { label: 'Prezenți', value: nrPrezentiTotal, cls: styles.verde },
                         { label: 'Absenți', value: libere.length, cls: styles.rosu },
                         { label: 'Locuri nefuncționale', value: locuriDefecte, cls: styles.portocaliu },
+                        { label: 'Trecuți prin ușă', value: `🚶 ${persoaneSenzor}`, cls: styles.portocaliu },
                     ].map(({ label, value, cls }) => (
                         <div key={label} className={styles.infoBarItem}>
                             <span className={styles.infoBarLabel}>{label}</span>

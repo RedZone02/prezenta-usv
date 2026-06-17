@@ -7,7 +7,7 @@ import { loadCorpuri, getSaptamana } from '../lib/date' // <-- Am adăugat getSa
 import { useRouter } from 'next/navigation'
 
 type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string }
-type Sala = { id: string; nume: string; corp: string; locuri: Loc[] }
+type Sala = { id: string; nume: string; corp: string; locuri: Loc[]; persoane_prezente?: number }
 type RaportClasa = { grupa: string; facultate: string; totalStudenti: number; prezenti: number; data: string }
 type Tab = 'sali' | 'rapoarte' | 'cautare'
 
@@ -88,7 +88,13 @@ export default function AdminPage() {
                     }))
                 }))
             )
-
+            const { data: senzoriSali } = await supabase.from('rooms').select('id, persoane_prezente')
+            if (senzoriSali) {
+                saliReale.forEach(sala => {
+                    const dateSenzor = senzoriSali.find((s: any) => s.id === sala.id)
+                    sala.persoane_prezente = dateSenzor ? dateSenzor.persoane_prezente : 0
+                })
+            }
             // locuri ocupate cu numele studentului
             const { data: locuriOcupate } = await supabase
                 .from('room_seats')
@@ -174,6 +180,9 @@ export default function AdminPage() {
                 async (payload: any) => {
                     const updated = payload.new
 
+
+
+
                     // Re-fetch locul cu student + scanare
                     const { data: locData } = await supabase
                         .from('room_seats')
@@ -219,6 +228,34 @@ export default function AdminPage() {
             .subscribe()
         return () => { supabase.removeChannel(channel) }
     }, [supabase])
+
+    useEffect(() => {
+        const channelRooms = supabase
+            .channel('admin-rooms-sensors')
+            .on('postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'rooms' },
+                (payload: any) => {
+                    const updatedRoom = payload.new
+
+                    // Actualizăm matricea generală de săli
+                    setSali(prevSali => prevSali.map(s =>
+                        s.id === updatedRoom.id ? { ...s, persoane_prezente: updatedRoom.persoane_prezente } : s
+                    ))
+
+                    // Actualizăm sala selectată dacă o privim exact pe ea
+                    setSalaSelectata(prevSelectata =>
+                        prevSelectata && prevSelectata.id === updatedRoom.id
+                            ? { ...prevSelectata, persoane_prezente: updatedRoom.persoane_prezente }
+                            : prevSelectata
+                    )
+                }
+            )
+            .subscribe()
+
+        return () => { supabase.removeChannel(channelRooms) }
+    }, [supabase])
+
+
 
     //Verificare Orar Curent pentru Sala Selectată
     useEffect(() => {
@@ -545,6 +582,9 @@ export default function AdminPage() {
                                                 <span className={`${styles.statChip} ${styles.statVerde}`}>{prezentiSala.length} ocupate</span>
                                                 <span className={`${styles.statChip} ${styles.statRosu}`}>{libereSala.length} libere</span>
                                                 <span className={`${styles.statChip} ${styles.statAlbastru}`}>{procentSala}% ocupare</span>
+                                                <span className={`${styles.statChip} ${styles.statPortocaliu}`}>
+                                                    🚶 {salaSelectata.persoane_prezente ?? 0} persoane fizic
+                                                </span>
                                             </div>
                                         </div>
 
