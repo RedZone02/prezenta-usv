@@ -474,3 +474,29 @@
     font-size: 0.8rem;
     color: #64748b;
 }
+
+/*Avertizare loc/calculator defect*/
+.locDefect {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border: 2px dashed #cbd5e1;
+}
+
+.butonDefect {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.butonDefect:hover {
+    background: #fde68a;
+}

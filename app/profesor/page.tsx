@@ -12,6 +12,7 @@ type Loc = {
     numar: number
     ocupat: boolean
     rezervat: boolean
+    defect?: boolean // <-- ADAUGAT: Proprietate pentru PC defect
     room_id: string
     student_id: string | null
     profiles?: { full_name: string } | null
@@ -147,7 +148,7 @@ export default function ProfesorPage() {
             setOrarCurent(orarData)
             setScheduleId(orarData.id)
 
-            // Paralelizăm cererile pentru profiles și attendance (performanță mai bună)
+            // Paralelizăm cererile pentru profiles și attendance
             const [resStudenti, resPrezente] = await Promise.all([
                 supabase.from('profiles').select('id, full_name, nr_matricol, grupa').eq('grupa', orarData.grupa).eq('role', 'student').order('full_name'),
                 supabase.from('attendance').select('student_id, scanned_at').eq('schedule_id', orarData.id)
@@ -172,7 +173,7 @@ export default function ProfesorPage() {
         fetchDateCurs()
     }, [supabase])
 
-    // 4. Realtime Attendance (RFID)
+    // Realtime Attendance (RFID)
     useEffect(() => {
         if (!scheduleId) return
 
@@ -196,10 +197,33 @@ export default function ProfesorPage() {
     // --- INTERACTIUNI / FUNCTII ---
 
     function handleClickLoc(loc: Loc) {
+        // Dacă locul este marcat ca defect, click-ul întreabă dacă vrei să-l repari
+        if (loc.defect) {
+            const confirm = window.confirm(`PC-ul de la locul ${loc.numar} este marcat ca DEFECT. Doriți să îl marcați ca fiind funcțional?`)
+            if (confirm) toggleDefectLoc(loc.id, true)
+            return
+        }
+
+        // Dacă e ocupat, dăm afară studentul
         if (loc.ocupat && loc.student_id) {
             eliminaStudent(loc.student_id)
         } else {
+            // Dacă e liber, deschidem modalul (unde avem și opțiunea de a-l marca defect)
             setModalLoc(loc)
+        }
+    }
+
+    // Funcția NOUĂ: Marcare/Demarcare Defect
+    async function toggleDefectLoc(locId: number, currentDefectStatus: boolean) {
+        const { error } = await supabase
+            .from('room_seats')
+            .update({ defect: !currentDefectStatus }) // inversăm statusul
+            .eq('id', locId)
+
+        if (error) {
+            alert('Eroare la actualizarea statusului: ' + error.message)
+        } else {
+            setModalLoc(null) // închidem modalul după salvare
         }
     }
 
@@ -224,7 +248,6 @@ export default function ProfesorPage() {
 
         if (error) return console.error('Eroare stergere prezenta:', error.message)
 
-        // Actualizăm starea locală doar dacă baza de date a procesat ștergerea
         setAttendanceIds(prev => {
             const next = new Set(prev)
             next.delete(studentId)
@@ -304,7 +327,7 @@ export default function ProfesorPage() {
         ...attendanceIds,
     ])
     const nrPrezentiTotal = studenti.filter(s => prezentiIds.has(s.id)).length
-    const libere = locuri.filter(l => !l.ocupat)
+    const libere = locuri.filter(l => !l.ocupat && !l.defect) // locurile defecte nu sunt considerate libere
     const procent = studenti.length > 0 ? Math.round((nrPrezentiTotal / studenti.length) * 100) : 0
 
     if (loading) return (
@@ -344,7 +367,7 @@ export default function ProfesorPage() {
                         { label: 'Ora', value: orarCurent?.materie ?? '—' },
                         { label: 'Sală', value: ROOM_ID.toUpperCase() },
                         { label: 'Prezenți', value: nrPrezentiTotal, cls: styles.verde },
-                        { label: 'Locuri libere', value: libere.length, cls: styles.rosu },
+                        { label: 'Locuri funcționale libere', value: libere.length, cls: styles.rosu },
                     ].map(({ label, value, cls }) => (
                         <div key={label} className={styles.infoBarItem}>
                             <span className={styles.infoBarLabel}>{label}</span>
@@ -370,15 +393,16 @@ export default function ProfesorPage() {
                 {/* TAB SALĂ */}
                 {tabActiv === 'sala' && (
                     <div className={styles.card}>
-                        <p className={styles.cardHint}>Click pe un loc pentru a-l elibera sau a asocia un student.</p>
+                        <p className={styles.cardHint}>Click pe un loc pentru a-l elibera, asocia un student sau a raporta un defect.</p>
                         <div className={styles.tabla}>TABLĂ</div>
                         <div className={styles.gridLocuri}>
                             {[...locuri].sort((a, b) => a.numar - b.numar).map(loc => (
                                 <button
                                     key={loc.id}
-                                    className={`${styles.loc} ${loc.ocupat ? styles.locOcupat : styles.locLiber}`}
+                                    // Logica de combinare a claselor (Defect are prioritate peste Liber, dar Ocupat are teoretic prioritate, desi un loc ocupat nu prea e defect)
+                                    className={`${styles.loc} ${loc.defect ? styles.locDefect : (loc.ocupat ? styles.locOcupat : styles.locLiber)}`}
                                     onClick={() => handleClickLoc(loc)}
-                                    title={loc.ocupat ? 'Ocupat — click pentru eliminare' : 'Liber — click pentru asignare'}
+                                    title={loc.defect ? 'Defect — click pentru a marca ca reparat' : (loc.ocupat ? 'Ocupat — click pentru eliminare' : 'Liber — click pentru asignare')}
                                 >
                                     <span className={styles.locLabel}>loc</span>
                                     <span className={styles.locNr}>{loc.numar}</span>
@@ -470,12 +494,26 @@ export default function ProfesorPage() {
                     </div>
                 )}
 
-                {/* MODAL SELECTARE STUDENT */}
+                {/* MODAL SELECTARE STUDENT & MARCARE DEFECT */}
                 {modalLoc && (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                         <div className={styles.card} style={{ width: '400px', maxHeight: '80vh', overflow: 'auto' }}>
-                            <h3 className={styles.cardTitlu}>Selectează student — Loc {modalLoc.numar}</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                            <h3 className={styles.cardTitlu}>Locul {modalLoc.numar}</h3>
+
+                            {/* Buton marcare defect */}
+                            <button
+                                className={styles.butonDefect}
+                                onClick={() => toggleDefectLoc(modalLoc.id, false)}
+                                style={{ width: '100%', marginBottom: '1rem' }}
+                            >
+                                ⚠️ Marchează PC-ul ca DEFECT
+                            </button>
+
+                            <hr style={{ margin: '1rem 0', borderColor: '#f3f4f6' }} />
+
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: '#4b5563' }}>Sau asignează manual un student:</h4>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {studenti.map(s => {
                                     const areLocOcupat = locuri.some(l => l.ocupat && l.student_id === s.id)
                                     return (

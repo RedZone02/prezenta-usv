@@ -265,6 +265,7 @@ export default function AdminPage() {
 
         fetchProfesori();
     }, []);
+
     async function handleAdaugaOraAdHoc(e: React.FormEvent) {
         e.preventDefault()
         if (!salaSelectata) return
