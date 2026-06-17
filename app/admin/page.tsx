@@ -39,7 +39,15 @@ export default function AdminPage() {
 
     const [cautareLoading, setCautareLoading] = useState(false)
     const [cautareEroare, setCautareEroare] = useState<string | null>(null)
-
+    const [orarCurent, setOrarCurent] = useState<any>(null)
+    const [showModalOrar, setShowModalOrar] = useState(false)
+    const [salvareLoading, setSalvareLoading] = useState(false)
+    const [formOrar, setFormOrar] = useState({
+        materie: '',
+        grupa: '',
+        ora_start: '',
+        ora_end: ''
+    })
 
     // săli + prezențe + rapoarte
     useEffect(() => {
