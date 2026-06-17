@@ -154,6 +154,8 @@ export default function ProfesorPage() {
                 supabase.from('attendance').select('student_id, scanned_at').eq('schedule_id', orarData.id)
             ])
 
+            let specializareDedusa = 'Nespecificat'
+
             if (resStudenti.data) {
                 setStudenti(resStudenti.data.map((p: { id: string; full_name: string; nr_matricol: string | null; grupa: string | null }) => ({
                     id: p.id,
@@ -161,7 +163,13 @@ export default function ProfesorPage() {
                     student_number: p.nr_matricol ?? '—',
                     grupa: p.grupa ?? orarData.grupa,
                 })))
+                specializareDedusa = resStudenti.data[0].facultate ?? 'Nespecificat'
             }
+            setOrarCurent({
+                ...orarData,
+                specializare: specializareDedusa
+            })
+            setScheduleId(orarData.id)
 
             if (resPrezente.data) {
                 setAttendanceIds(new Set(resPrezente.data.map((s: { student_id: string; scanned_at: string }) => s.student_id)))
