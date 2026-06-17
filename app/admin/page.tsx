@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
-import { loadCorpuri } from '../lib/date'
+import { loadCorpuri, getSaptamana } from '../lib/date' // <-- Am adăugat getSaptamana aici
 import { useRouter } from 'next/navigation'
 
 type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string }
@@ -14,6 +14,8 @@ type Tab = 'sali' | 'rapoarte' | 'cautare'
 export default function AdminPage() {
     const supabase = createClientBrowser()
     const router = useRouter()
+
+    // Stări principale
     const [tabActiv, setTabActiv] = useState<Tab>('sali')
     const [sali, setSali] = useState<Sala[]>([])
     const [corpSelectat, setCorpSelectat] = useState<string | null>(null)
@@ -21,6 +23,8 @@ export default function AdminPage() {
     const [loadingSali, setLoadingSali] = useState(true)
     const [rapoarte, setRapoarte] = useState<RaportClasa[]>([])
     const [filtreFacultate, setFiltreFacultate] = useState('toate')
+
+    // Stări Căutare Student
     const [cautareNume, setCautareNume] = useState('')
     const [rezultatCautare, setRezultatCautare] = useState<{
         id: string
@@ -36,9 +40,10 @@ export default function AdminPage() {
             curs: string
         }[]
     } | null>(null)
-
     const [cautareLoading, setCautareLoading] = useState(false)
     const [cautareEroare, setCautareEroare] = useState<string | null>(null)
+
+    // Stări Orar Ad-Hoc
     const [orarCurent, setOrarCurent] = useState<any>(null)
     const [showModalOrar, setShowModalOrar] = useState(false)
     const [salvareLoading, setSalvareLoading] = useState(false)
@@ -49,7 +54,7 @@ export default function AdminPage() {
         ora_end: ''
     })
 
-    // săli + prezențe + rapoarte
+    // 1. Inițializare: săli + prezențe + rapoarte
     useEffect(() => {
         async function init() {
             const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -91,7 +96,7 @@ export default function AdminPage() {
 
             // scanările de azi din attendance
             const azi = new Date().toISOString().split('T')[0]
-            const { data: scanari, error: scanariError } = await supabase
+            const { data: scanari } = await supabase
                 .from('attendance')
                 .select('student_id, scanned_at')
                 .gte('scanned_at', azi)
@@ -157,9 +162,9 @@ export default function AdminPage() {
             }
         }
         init()
-    }, [])
+    }, [router, supabase])
 
-    // Realtime room_seats
+    // 2. Realtime room_seats
     useEffect(() => {
         const channel = supabase
             .channel('admin-seats')
@@ -212,26 +217,77 @@ export default function AdminPage() {
             )
             .subscribe()
         return () => { supabase.removeChannel(channel) }
-    }, [])
+    }, [supabase])
 
-    // Valori derivate
-    const facultati = ['toate', ...Array.from(new Set(rapoarte.map(r => r.facultate)))]
-    const rapoarteFiltrate = filtreFacultate === 'toate'
-        ? rapoarte
-        : rapoarte.filter(r => r.facultate === filtreFacultate)
+    // 3. Verificare Orar Curent pentru Sala Selectată
+    useEffect(() => {
+        async function fetchOrarSala() {
+            if (!salaSelectata) {
+                setOrarCurent(null)
+                return
+            }
 
-    if (loadingSali) {
-        return (
-            <div className={styles.main}>
-                <p style={{ padding: '2rem' }}>Se încarcă...</p>
-            </div>
-        )
+            const acum = new Date()
+            const bucuresti = new Date(acum.toLocaleString('en-US', { timeZone: 'Europe/Bucharest' }))
+            const ziAzi = bucuresti.getDay() === 0 ? 7 : bucuresti.getDay()
+            const oraAzi = `${String(bucuresti.getHours()).padStart(2, '0')}:${String(bucuresti.getMinutes()).padStart(2, '0')}:00`
+            const saptamana = getSaptamana()
+
+            const { data } = await supabase
+                .from('schedule')
+                .select('id, materie, grupa, ora_start, ora_end, profiles!profesor_id(full_name)')
+                .eq('room_id', salaSelectata.id)
+                .eq('zi', ziAzi)
+                .lte('ora_start', oraAzi)
+                .gte('ora_end', oraAzi)
+                .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
+                .limit(1)
+                .maybeSingle()
+
+            setOrarCurent(data)
+        }
+        fetchOrarSala()
+    }, [salaSelectata, supabase])
+
+    // --- FUNCȚII ACȚIUNI ---
+
+    async function handleAdaugaOraAdHoc(e: React.FormEvent) {
+        e.preventDefault()
+        if (!salaSelectata) return
+        setSalvareLoading(true)
+
+        const acum = new Date()
+        const bucuresti = new Date(acum.toLocaleString('en-US', { timeZone: 'Europe/Bucharest' }))
+        const ziAzi = bucuresti.getDay() === 0 ? 7 : bucuresti.getDay()
+
+        const { error } = await supabase
+            .from('schedule')
+            .insert({
+                room_id: salaSelectata.id,
+                zi: ziAzi,
+                materie: formOrar.materie,
+                grupa: formOrar.grupa,
+                ora_start: `${formOrar.ora_start}:00`,
+                ora_end: `${formOrar.ora_end}:00`,
+                saptamana: null
+            })
+
+        setSalvareLoading(false)
+
+        if (error) {
+            alert("Eroare la crearea orei: " + error.message)
+        } else {
+            setShowModalOrar(false)
+            // Forțăm refetch-ul simulând o re-selectare a sălii
+            setSalaSelectata({ ...salaSelectata })
+        }
     }
 
     async function handleDeconectare() {
         await supabase.auth.signOut()
         router.push('/')
     }
+
     async function handleCautareStudent() {
         if (!cautareNume.trim()) return
         setCautareLoading(true)
@@ -252,16 +308,12 @@ export default function AdminPage() {
             return
         }
 
-        // Ia toate prezențele studentului
         const { data: prezente } = await supabase
             .from('attendance')
             .select('scanned_at, room_id, uid_used')
             .eq('student_id', student.id)
             .order('scanned_at', { ascending: false })
 
-        const roomIds = [...new Set((prezente ?? []).map((p: any) => p.room_id).filter(Boolean))]
-
-        // Preia schedule cu profesor + curs
         let infoPerPrezenta: Record<string, { profesor: string; curs: string }> = {}
 
         if (prezente && prezente.length > 0) {
@@ -272,9 +324,7 @@ export default function AdminPage() {
             if (scheduleData) {
                 prezente.forEach((p: any) => {
                     const data = new Date(p.scanned_at)
-
-                    // zi 1=luni ... 7=duminică (ca în baza ta de date)
-                    let ziDb = data.getDay() // 0=duminică, 1=luni...
+                    let ziDb = data.getDay()
                     if (ziDb === 0) ziDb = 7
 
                     const oraTime = data.toLocaleTimeString('ro-RO', {
@@ -330,6 +380,20 @@ export default function AdminPage() {
         setCautareLoading(false)
     }
 
+    // Valori derivate UI
+    const facultati = ['toate', ...Array.from(new Set(rapoarte.map(r => r.facultate)))]
+    const rapoarteFiltrate = filtreFacultate === 'toate'
+        ? rapoarte
+        : rapoarte.filter(r => r.facultate === filtreFacultate)
+
+    if (loadingSali) {
+        return (
+            <div className={styles.main}>
+                <p style={{ padding: '2rem' }}>Se încarcă structura sistemului...</p>
+            </div>
+        )
+    }
+
     const prezentiSala = salaSelectata?.locuri.filter(l => l.ocupat) ?? []
     const libereSala = salaSelectata?.locuri.filter(l => !l.ocupat) ?? []
     const procentSala = (salaSelectata && salaSelectata.locuri.length > 0)
@@ -369,7 +433,7 @@ export default function AdminPage() {
                 {tabActiv === 'sali' && (
                     <div className={styles.saliLayout}>
 
-                        {/* SIDEBAR */}
+                        {/* SIDEBAR SĂLI */}
                         <div className={styles.saliSidebar}>
                             <div className={styles.card}>
                                 {!corpSelectat ? (
@@ -449,7 +513,7 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        {/* DREAPTA */}
+                        {/* ZONA CENTRALĂ: SALA SELECTATĂ */}
                         <div className={styles.salaDetaliu}>
                             {!corpSelectat || !salaSelectata ? (
                                 <div className={styles.salaDetaliuGol}>
@@ -467,6 +531,36 @@ export default function AdminPage() {
                                                 <span className={`${styles.statChip} ${styles.statAlbastru}`}>{procentSala}% ocupare</span>
                                             </div>
                                         </div>
+
+                                        {/* BANNER ORAR / ADĂUGARE ORĂ */}
+                                        <div style={{ padding: '1rem', background: 'var(--bg-secundar, #f8f9fa)', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border, #e5e7eb)' }}>
+                                            {orarCurent ? (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center', fontSize: '0.9rem' }}>
+                                                    <span>📖 Curs: <strong>{orarCurent.materie}</strong> ({orarCurent.grupa})</span>
+                                                    <span>👨‍🏫 Profesor: <strong>{orarCurent.profiles?.full_name ?? 'Nespecificat'}</strong></span>
+                                                    <span style={{ background: 'white', padding: '2px 8px', borderRadius: '4px', border: '1px solid #ccc', fontWeight: 600 }}>
+                                                        🕐 {orarCurent.ora_start.slice(0, 5)} - {orarCurent.ora_end.slice(0, 5)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span style={{ color: 'var(--gri, #666)', fontSize: '0.95rem' }}>Nicio oră în desfășurare momentan.</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            const now = new Date()
+                                                            const hh = String(now.getHours()).padStart(2, '0')
+                                                            const nextHh = String((now.getHours() + 2) % 24).padStart(2, '0')
+                                                            setFormOrar({ materie: '', grupa: '', ora_start: `${hh}:00`, ora_end: `${nextHh}:00` })
+                                                            setShowModalOrar(true)
+                                                        }}
+                                                        style={{ padding: '8px 16px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, transition: '0.2s' }}
+                                                    >
+                                                        ➕ Adaugă oră acum
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+
                                         <div className={styles.tabla}>TABLĂ</div>
                                         <div className={styles.gridLocuri}>
                                             {salaSelectata.locuri.map(loc => (
@@ -508,7 +602,6 @@ export default function AdminPage() {
                                 </>
                             )}
                         </div>
-
                     </div>
                 )}
 
@@ -570,6 +663,7 @@ export default function AdminPage() {
                         </table>
                     </div>
                 )}
+
                 {/* TAB CĂUTARE STUDENT */}
                 {tabActiv === 'cautare' && (
                     <div className={styles.card}>
@@ -654,6 +748,89 @@ export default function AdminPage() {
                     </div>
                 )}
             </div>
+
+            {/* MODAL ADAUGARE ORA AD-HOC */}
+            {showModalOrar && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                }}>
+                    <div className={styles.card} style={{ width: '400px', padding: '2rem' }}>
+                        <h3 className={styles.cardTitlu} style={{ borderBottom: '1px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem' }}>Adaugă oră nouă</h3>
+                        <form onSubmit={handleAdaugaOraAdHoc} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                            <div>
+                                <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Nume Materie / Curs</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className={styles.select}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                    placeholder="ex: Programare Web (curs)"
+                                    value={formOrar.materie}
+                                    onChange={e => setFormOrar({ ...formOrar, materie: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Grupă / Seria</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className={styles.select}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                    placeholder="ex: 3131A"
+                                    value={formOrar.grupa}
+                                    onChange={e => setFormOrar({ ...formOrar, grupa: e.target.value })}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ora Start</label>
+                                    <input
+                                        type="time"
+                                        required
+                                        className={styles.select}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                        value={formOrar.ora_start}
+                                        onChange={e => setFormOrar({ ...formOrar, ora_start: e.target.value })}
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ora Final</label>
+                                    <input
+                                        type="time"
+                                        required
+                                        className={styles.select}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                        value={formOrar.ora_end}
+                                        onChange={e => setFormOrar({ ...formOrar, ora_end: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button
+                                    type="button"
+                                    style={{ flex: 1, padding: '0.75rem', background: '#f1f5f9', color: '#374151', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                    onClick={() => setShowModalOrar(false)}
+                                >
+                                    Anulează
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{ flex: 1, padding: '0.75rem', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                    disabled={salvareLoading}
+                                >
+                                    {salvareLoading ? 'Se salvează...' : 'Salvează'}
+                                </button>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
