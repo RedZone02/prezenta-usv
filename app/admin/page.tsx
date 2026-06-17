@@ -236,7 +236,7 @@ export default function AdminPage() {
 
             const { data } = await supabase
                 .from('schedule')
-                .select('id, materie, grupa, ora_start, ora_end, profiles!profesor_id(full_name)')
+                .select('id, materie, grupa, ora_start, ora_end, profesor_id, profiles(full_name)')
                 .eq('room_id', salaSelectata.id)
                 .eq('zi', ziAzi)
                 .lte('ora_start', oraAzi)
