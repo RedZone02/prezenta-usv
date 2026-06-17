@@ -1,7 +1,6 @@
 .main {
     min-height: 100vh;
     background: #f8fafc;
-    overflow-x: hidden;
 }
 
 .loading {
