@@ -52,16 +52,9 @@ export async function GET(req: NextRequest) {
     const occupied = seats?.filter(s => s.ocupat).length ?? 0
     const free = total - occupied
 
-    let displayInterval = "PAUZA / LIBER"
-    if (schedule) {
-        const start = schedule.ora_start.substring(0, 5)
-        const end = schedule.ora_end.substring(0, 5)
-        displayInterval = `${start} - ${end}`
-    }
-
     return NextResponse.json({
         room,
-        time: displayInterval,
+        time: ora,
         weekType: saptamana,
         total,
         occupied,
