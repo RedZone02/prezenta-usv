@@ -327,9 +327,8 @@ export default function ProfesorPage() {
         ...attendanceIds,
     ])
     const nrPrezentiTotal = studenti.filter(s => prezentiIds.has(s.id)).length
-    const absentiTotal = studenti.length > 0 ? (studenti.length - nrPrezentiTotal) : 0
     const locuriDefecte = locuri.filter(l => l.defect).length
-    const libere = locuri.filter(l => !l.ocupat && !l.defect)
+    const libere = locuri.filter(l => !l.ocupat && !l.defect) // locurile defecte nu sunt considerate libere
     const procent = studenti.length > 0 ? Math.round((nrPrezentiTotal / studenti.length) * 100) : 0
 
     if (loading) return (
@@ -369,8 +368,8 @@ export default function ProfesorPage() {
                         { label: 'Ora', value: orarCurent?.materie ?? '—' },
                         { label: 'Sală', value: ROOM_ID.toUpperCase() },
                         { label: 'Prezenți', value: nrPrezentiTotal, cls: styles.verde },
-                        { label: 'Absenți', value: absentiTotal, cls: styles.rosu },
-                        { label: 'Locuri nefuncționale', value: locuriDefecte, cls: styles.statPortocaliu }, // Folosesc portocaliu pentru avertizare
+                        { label: 'Absenți', value: libere.length, cls: styles.rosu },
+                        { label: 'Locuri nefuncționale', value: locuriDefecte, cls: styles.statPortocaliu },
                     ].map(({ label, value, cls }) => (
                         <div key={label} className={styles.infoBarItem}>
                             <span className={styles.infoBarLabel}>{label}</span>
