@@ -369,7 +369,7 @@ export default function ProfesorPage() {
                         { label: 'Sală', value: ROOM_ID.toUpperCase() },
                         { label: 'Prezenți', value: nrPrezentiTotal, cls: styles.verde },
                         { label: 'Absenți', value: libere.length, cls: styles.rosu },
-                        { label: 'Locuri nefuncționale', value: locuriDefecte, cls: styles.statPortocaliu },
+                        { label: 'Locuri nefuncționale', value: locuriDefecte, cls: styles.portocaliu },
                     ].map(({ label, value, cls }) => (
                         <div key={label} className={styles.infoBarItem}>
                             <span className={styles.infoBarLabel}>{label}</span>
