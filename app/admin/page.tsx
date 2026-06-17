@@ -765,79 +765,90 @@ export default function AdminPage() {
 
             {/* MODAL ADAUGARE ORA AD-HOC */}
             {showModalOrar && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-                }}>
-                    <div className={styles.card} style={{ width: '400px', padding: '2rem' }}>
-                        <h3 className={styles.cardTitlu} style={{ borderBottom: '1px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem' }}>Adaugă oră nouă</h3>
-                        <form onSubmit={handleAdaugaOraAdHoc} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className={styles.modalOverlay}>
+                    <div className={`${styles.card} ${styles.modalContainer}`}>
+                        <h3 className={`${styles.cardTitlu} ${styles.modalHeader}`}>
+                            Adaugă oră nouă în {salaSelectata?.nume}
+                        </h3>
 
-                            <div>
-                                <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Nume Materie / Curs</label>
+                        <form onSubmit={handleAdaugaOraAdHoc} className={styles.modalForm}>
+
+                            <div className={styles.modalInputGroup}>
+                                <label className={`${styles.selectLabel} ${styles.modalLabel}`}>Nume Materie / Curs</label>
                                 <input
                                     type="text"
                                     required
-                                    className={styles.select}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                    className={`${styles.select} ${styles.modalInput}`}
                                     placeholder="ex: Programare Web (curs)"
                                     value={formOrar.materie}
                                     onChange={e => setFormOrar({ ...formOrar, materie: e.target.value })}
                                 />
                             </div>
 
-                            <div>
-                                <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Grupă / Seria</label>
+                            <div className={styles.modalInputGroup}>
+                                <label className={`${styles.selectLabel} ${styles.modalLabel}`}>Grupă / Seria</label>
                                 <input
                                     type="text"
                                     required
-                                    className={styles.select}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                    className={`${styles.select} ${styles.modalInput}`}
                                     placeholder="ex: 3131A"
                                     value={formOrar.grupa}
                                     onChange={e => setFormOrar({ ...formOrar, grupa: e.target.value })}
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ora Start</label>
+                            <div className={styles.modalInputGroup}>
+                                <label className={`${styles.selectLabel} ${styles.modalLabel}`}>Profesor</label>
+                                <select
+                                    required
+                                    className={`${styles.select} ${styles.modalInput}`}
+                                    value={formOrar.profesor_id}
+                                    onChange={e => setFormOrar({ ...formOrar, profesor_id: e.target.value })}
+                                >
+                                    <option value="">-- Selectează un profesor --</option>
+                                    {profesori.map(p => (
+                                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.modalRow}>
+                                <div className={styles.modalCol}>
+                                    <label className={`${styles.selectLabel} ${styles.modalLabel}`}>Ora Start</label>
                                     <input
                                         type="time"
                                         required
-                                        className={styles.select}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                        className={`${styles.select} ${styles.modalInput}`}
                                         value={formOrar.ora_start}
                                         onChange={e => setFormOrar({ ...formOrar, ora_start: e.target.value })}
                                     />
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <label className={styles.selectLabel} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ora Final</label>
+                                <div className={styles.modalCol}>
+                                    <label className={`${styles.selectLabel} ${styles.modalLabel}`}>Ora Final</label>
                                     <input
                                         type="time"
                                         required
-                                        className={styles.select}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                                        className={`${styles.select} ${styles.modalInput}`}
                                         value={formOrar.ora_end}
                                         onChange={e => setFormOrar({ ...formOrar, ora_end: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                            <div className={styles.modalActions}>
                                 <button
                                     type="button"
-                                    style={{ flex: 1, padding: '0.75rem', background: '#f1f5f9', color: '#374151', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                    className={`${styles.modalBtn} ${styles.modalBtnCancel}`}
                                     onClick={() => setShowModalOrar(false)}
                                 >
                                     Anulează
                                 </button>
                                 <button
                                     type="submit"
-                                    style={{ flex: 1, padding: '0.75rem', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                    className={`${styles.modalBtn} ${styles.modalBtnSave}`}
                                     disabled={salvareLoading}
                                 >
-                                    {salvareLoading ? 'Se salvează...' : 'Salvează'}
+                                    {salvareLoading ? 'Se salvează...' : 'Salvează ora'}
                                 </button>
                             </div>
 

@@ -621,6 +621,10 @@
     gap: 1.25rem;
 }
 
+.modalInputGroup {
+    /* Folosit pentru containerele cu label + input */
+}
+
 .modalInput {
     width: 100%;
     padding: 0.75rem;
@@ -631,7 +635,17 @@
 
 .modalRow {
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
+}
+
+.modalCol {
+    flex: 1;
+}
+
+.modalLabel {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
 }
 
 .modalActions {
@@ -648,6 +662,7 @@
     font-weight: 600;
     border: none;
     transition: 0.2s;
+    text-align: center;
 }
 
 .modalBtnCancel {
@@ -656,18 +671,20 @@
     border: 1px solid #cbd5e1;
 }
 
+.modalBtnCancel:hover {
+    background: #e2e8f0;
+}
+
 .modalBtnSave {
     background: #4F46E5;
     color: white;
 }
 
+.modalBtnSave:hover:not(:disabled) {
+    background: #4338ca;
+}
+
 .modalBtnSave:disabled {
     opacity: 0.7;
     cursor: not-allowed;
-}
-
-.modalLabel {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
 }
