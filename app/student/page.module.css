@@ -22,25 +22,33 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 1rem 2rem;
-    background: #ffffff;
+    background: #fff;
     border-bottom: 1px solid #e2e8f0;
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
-.headerTitlu {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-}
-
 .headerDreapta {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .headerDreapta {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .numeStudent {
@@ -82,6 +90,14 @@
     padding: 1.5rem;
     border: 1px solid #e2e8f0;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    .card {
+        padding: 1rem;
+    }
 }
 
 .cardTitlu {
@@ -96,13 +112,23 @@
 /* Info grid */
 .infoGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
 
 .infoItem {
-    display: grid;
-    gap: 0.25rem;
+    min-width: 0;
+}
+
+.infoValoare {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .infoLabel {
@@ -121,13 +147,16 @@
 
 /* Tabel orar */
 .tabelWrapper {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tabel {
     width: 100%;
+    min-width: 720px;
     border-collapse: collapse;
-    font-size: 0.9rem;
 }
 
 .tabel th {
