@@ -163,7 +163,7 @@ export default function ProfesorPage() {
                     student_number: p.nr_matricol ?? '—',
                     grupa: p.grupa ?? orarData.grupa,
                 })))
-                specializareDedusa = resStudenti.data[0].facultate ?? 'Nespecificat'
+                specializareDedusa = resStudenti.data[0].specializare ?? 'Nespecificat'
             }
             setOrarCurent({
                 ...orarData,
