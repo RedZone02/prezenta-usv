@@ -150,7 +150,7 @@ export default function ProfesorPage() {
 
             // Paralelizăm cererile pentru profiles și attendance
             const [resStudenti, resPrezente] = await Promise.all([
-                supabase.from('profiles').select('id, full_name, nr_matricol, grupa').eq('grupa', orarData.grupa).eq('role', 'student').order('full_name'),
+                supabase.from('profiles').select('id, full_name, nr_matricol, grupa, specializare',).eq('grupa', orarData.grupa).eq('role', 'student').order('full_name'),
                 supabase.from('attendance').select('student_id, scanned_at').eq('schedule_id', orarData.id)
             ])
 
