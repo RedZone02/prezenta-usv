@@ -57,7 +57,6 @@ export default function ProfesorPage() {
     const [modalLoc, setModalLoc] = useState<Loc | null>(null)
     const [loading, setLoading] = useState(true)
     const [exportLoading, setExportLoading] = useState(false)
-
     // State-uri Date
     const [numeProfesor, setNumeProfesor] = useState<string>('')
     const [locuri, setLocuri] = useState<Loc[]>([])
@@ -66,7 +65,6 @@ export default function ProfesorPage() {
     const [scheduleId, setScheduleId] = useState<string | null>(null)
     const [attendanceIds, setAttendanceIds] = useState<Set<string>>(new Set())
     const [oreScanare, setOreScanare] = useState<Record<string, string>>({})
-
     const ROOM_ID = 'c101'
 
     /* Autentificare & Verificare Rol Profesor */
