@@ -281,6 +281,7 @@ export default function AdminPage() {
                 zi: ziAzi,
                 materie: formOrar.materie,
                 grupa: formOrar.grupa,
+                profesor_id: formOrar.profesor_id,
                 ora_start: `${formOrar.ora_start}:00`,
                 ora_end: `${formOrar.ora_end}:00`,
                 saptamana: null
