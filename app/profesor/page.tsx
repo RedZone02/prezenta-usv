@@ -363,7 +363,7 @@ export default function ProfesorPage() {
                 {orarCurent ? (
                     <div className={styles.orarBanner}>
                         <span>🎓 Specializare: <strong>{orarCurent.specializare}</strong></span>
-                        <span>👥 Grupa: <strong>{orarCurent.grupa}</strong></span>
+                        <span>|  Grupa: <strong>{orarCurent.grupa}</strong></span>
                         <span>| 🕐 {orarCurent.ora_start.slice(0, 5)} – {orarCurent.ora_end.slice(0, 5)}</span>
                         <span>| 📅 Săpt. <strong>{getSaptamana()}</strong></span>
                     </div>
