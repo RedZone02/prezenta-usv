@@ -15,7 +15,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
     padding: 1rem 2rem;
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
@@ -34,9 +33,7 @@
 .headerDreapta {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 1rem;
 }
 
 .numeStudent {
@@ -66,7 +63,7 @@
 .continut {
     max-width: 960px;
     margin: 0 auto;
-    padding: 2rem 1rem;
+    padding: 2rem 1.5rem;
     display: grid;
     gap: 1.5rem;
 }
@@ -75,11 +72,9 @@
 .card {
     background: #ffffff;
     border-radius: 1rem;
-    padding: 1.25rem;
+    padding: 1.5rem;
     border: 1px solid #e2e8f0;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-    max-width: 100%;
-    overflow: hidden;
 }
 
 .cardTitlu {
@@ -94,12 +89,13 @@
 /* Info grid */
 .infoGrid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
 }
 
 .infoItem {
-    min-width: 0;
+    display: grid;
+    gap: 0.25rem;
 }
 
 .infoLabel {
@@ -114,21 +110,15 @@
     font-size: 0.95rem;
     font-weight: 500;
     color: #0f172a;
-    overflow-wrap: anywhere;
-    word-break: break-word;
 }
 
 /* Tabel orar */
 .tabelWrapper {
-    width: 100%;
-    max-width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .tabel {
     width: 100%;
-    min-width: 720px;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
@@ -181,9 +171,7 @@
 /* Responsive */
 @media (max-width: 640px) {
     .header {
-        padding: 0.75rem 1rem;
-        align-items: flex-start;
-        flex-direction: column;
+        padding: 1rem;
     }
 
     .headerTitlu {
@@ -191,7 +179,7 @@
     }
 
     .continut {
-        padding: 1rem 0.75rem;
+        padding: 1rem;
     }
 
     .infoGrid {
