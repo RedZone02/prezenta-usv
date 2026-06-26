@@ -1,7 +1,6 @@
 "use client"
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import styles from './module_css/FraudAlert.module.css'
-
 
 interface FraudAlertProps {
     studentiScanati: number;
@@ -11,48 +10,7 @@ interface FraudAlertProps {
 export default function FraudAlert({ studentiScanati, persoaneFizice }: FraudAlertProps) {
     const esteFrauda = studentiScanati > persoaneFizice;
 
-    // Folosim useRef pentru a nu spama notificarea la fiecare re-randare a paginii
-    const notificareTrimisa = useRef(false);
-
-    // 1. Cerem permisiunea browserului când componenta se încarcă
-    useEffect(() => {
-        if ("Notification" in window && Notification.permission !== "granted") {
-            Notification.requestPermission();
-        }
-    }, []);
-
-    // 2. Declanșăm notificarea Push pe ecran
-    useEffect(() => {
-        if (esteFrauda && !notificareTrimisa.current) {
-            if ("Notification" in window && Notification.permission === "granted") {
-
-                // Creăm și afișăm notificarea de sistem
-                new Notification("🚨 Alertă Prezență (Sistem USV)", {
-                    body: `Posibilă fraudă: ${studentiScanati} carduri scanate, dar doar ${persoaneFizice} persoane în sală.`,
-                    icon: "/favicon.ico" // Aici va apărea logo-ul site-ului tău
-                });
-
-                // Vibrate is not part of NotificationOptions in TypeScript typings.
-                // Use navigator.vibrate when available to trigger device vibration.
-                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-                    try {
-                        (navigator as any).vibrate([200, 100, 200]);
-                    } catch (e) {
-                        // ignore vibration errors
-                    }
-                }
-
-                // Marcăm că am trimis alerta ca să nu se repete la infinit
-                notificareTrimisa.current = true;
-            }
-        } else if (!esteFrauda) {
-            // Dacă numărul s-a reglat (a mai intrat cineva), resetăm starea
-            // Astfel, dacă apare O NOUĂ fraudă mai târziu, va suna din nou.
-            notificareTrimisa.current = false;
-        }
-    }, [esteFrauda, studentiScanati, persoaneFizice]);
-
-    // Logica vizuală (bannerul roșu din pagină) rămâne la fel
+    // Dacă nu e fraudă, nu randăm nimic
     if (!esteFrauda) {
         return null;
     }
