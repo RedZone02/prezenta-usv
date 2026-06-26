@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
-import { loadCorpuri, getSaptamana } from '../lib/date' // <-- Am adăugat getSaptamana aici
+import { loadCorpuri, getSaptamana } from '../lib/date'
 import { useRouter } from 'next/navigation'
 
 type Loc = { id: number; ocupat: boolean; student?: string; oraIntrare?: string }
@@ -179,10 +179,6 @@ export default function AdminPage() {
                 { event: '*', schema: 'public', table: 'room_seats' },
                 async (payload: any) => {
                     const updated = payload.new
-
-
-
-
                     // Re-fetch locul cu student + scanare
                     const { data: locData } = await supabase
                         .from('room_seats')
@@ -228,6 +224,7 @@ export default function AdminPage() {
             .subscribe()
         return () => { supabase.removeChannel(channel) }
     }, [supabase])
+
 
     useEffect(() => {
         const channelRooms = supabase
@@ -295,7 +292,7 @@ export default function AdminPage() {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, full_name')
-                .eq('role', 'profesor'); // Filtrează doar dacă ai o coloană 'role'
+                .eq('role', 'profesor');
 
             if (data) setProfesori(data);
         };
@@ -589,7 +586,10 @@ export default function AdminPage() {
                                         </div>
 
                                         {/* BANNER ORAR / ADĂUGARE ORĂ */}
-                                        <div style={{ padding: '1rem', background: 'var(--bg-secundar, #f8f9fa)', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border, #e5e7eb)' }}>
+                                        <div style={{
+                                            padding: '1rem', background: 'var(--bg-secundar, #f8f9fa)', borderRadius: '8px', marginBottom: '1.5rem',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border, #e5e7eb)'
+                                        }}>
                                             {orarCurent ? (
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center', fontSize: '0.9rem' }}>
                                                     <span>📖 Curs: <strong>{orarCurent.materie}</strong> ({orarCurent.grupa})</span>
@@ -609,7 +609,10 @@ export default function AdminPage() {
                                                             setFormOrar({ materie: '', grupa: '', profesor_id: '', ora_start: `${hh}:00`, ora_end: `${nextHh}:00` })
                                                             setShowModalOrar(true)
                                                         }}
-                                                        style={{ padding: '8px 16px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, transition: '0.2s' }}
+                                                        style={{
+                                                            padding: '8px 16px', background: '#4F46E5', color: 'white', border: 'none',
+                                                            borderRadius: '6px', cursor: 'pointer', fontWeight: 500, transition: '0.2s'
+                                                        }}
                                                     >
                                                         ➕ Adaugă oră acum
                                                     </button>

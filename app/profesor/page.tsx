@@ -5,6 +5,7 @@ import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { getSaptamana } from '../lib/date'
+import FraudAlert from '../componente/FraudAlert';
 
 /* TIPURI DATE */
 type Loc = {
@@ -12,7 +13,7 @@ type Loc = {
     numar: number
     ocupat: boolean
     rezervat: boolean
-    defect?: boolean // <-- ADAUGAT: Proprietate pentru PC defect
+    defect?: boolean
     room_id: string
     student_id: string | null
     profiles?: { full_name: string } | null
@@ -46,6 +47,7 @@ function getOraSiZiBucuresti() {
     const min = String(bucuresti.getMinutes()).padStart(2, '0')
     return { ziAzi, oraAzi: `${ora}:${min}:00` }
 }
+
 
 /* COMPONENTA PRINCIPALA */
 export default function ProfesorPage() {
@@ -399,6 +401,11 @@ export default function ProfesorPage() {
                         </div>
                     ))}
                 </div>
+
+                <FraudAlert
+                    studentiScanati={nrPrezentiTotal}
+                    persoaneFizice={persoaneSenzor}
+                />
 
                 <div className={styles.tabs}>
                     {([

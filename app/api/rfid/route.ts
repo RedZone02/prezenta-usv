@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Sala negasita' }, { status: 404 })
     }
 
-    // 3. Calculeaza ora si ziua in Romania (EEST = UTC+3)
+    // 3. Calculeaza ora si ziua in Romania
     const now = new Date()
     const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/Bucharest',
@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
         .select('id, materie, grupa')
         .eq('room_id', room_data.id)
         .eq('zi', zi)
-        //.eq('saptamana', saptamana)
         .lte('ora_start', oraAcum)
         .gte('ora_end', oraAcum)
         .maybeSingle()
@@ -117,10 +116,10 @@ export async function POST(req: NextRequest) {
 
     // 8. Marcheaza locul ca ocupat
     const { error: seatUpdateError } = await supabase
-    .from('room_seats')
-    .update({ ocupat: true, student_id: student.id })
-    .eq('room_id', room_data.id)
-    .eq('numar', freeSeat.numar)
+        .from('room_seats')
+        .update({ ocupat: true, student_id: student.id })
+        .eq('room_id', room_data.id)
+        .eq('numar', freeSeat.numar)
     if (seatUpdateError) {
         return NextResponse.json({ error: seatUpdateError.message }, { status: 500 })
     }

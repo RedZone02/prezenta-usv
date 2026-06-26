@@ -69,7 +69,7 @@ export default function Home() {
         (payload: any) => {
           const updated = payload.new
 
-          // log de verificare — șterge după ce merge
+          // log de verificare - șterge după ce merge
           console.log('updated:', updated)
 
           setSalaSelectata(prev => {
@@ -79,7 +79,7 @@ export default function Home() {
             return {
               ...prev,
               locuri: prev.locuri.map(loc =>
-                loc.numar === updated.numar  // ← potrivire după numar
+                loc.numar === updated.numar  // potrivire după numar
                   ? { ...loc, ocupat: updated.ocupat, rezervat: updated.rezervat }
                   : loc
               )
@@ -94,7 +94,7 @@ export default function Home() {
                   ? {
                     ...sala,
                     locuri: sala.locuri.map(loc =>
-                      loc.numar === updated.numar  // ← același fix
+                      loc.numar === updated.numar  // același fix
                         ? { ...loc, ocupat: updated.ocupat, rezervat: updated.rezervat }
                         : loc
                     )

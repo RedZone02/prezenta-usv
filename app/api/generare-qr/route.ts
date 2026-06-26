@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
         if (!studentId || !salaId) {
             return NextResponse.json({ error: 'Nu am primit studentId sau salaId de la frontend.' }, { status: 400 })
         }
-        //Generare token și inserare în baza de date
         const token = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0')
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
         const { error } = await supabase
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest) {
             .insert({ token, student_id: studentId, room_id: salaId, expires_at: expiresAt })
 
         if (error) {
-            // Dacă baza de date refuză inserția (ex: tabel lipsă, foreign key invalid), o trimitem la browser
             return NextResponse.json({ error: `Eroare Bază de Date: ${error.message}` }, { status: 500 })
         }
         return NextResponse.json({ token, expiresAt }, { status: 200 })
@@ -36,3 +34,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Crash intern API: ${e.message}` }, { status: 500 })
     }
 }
+

@@ -46,7 +46,7 @@ export async function loadCorpuri(): Promise<Corp[]> {
         .gte('ora_end', oraAcum)
         .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
 
-    // Mapă room_id → orar curent
+    // Mapă room_id orar curent
     const orarMap = new Map<string, {
         ora: string
         materie: string

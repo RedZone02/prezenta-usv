@@ -7,16 +7,6 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-
-    function getSaptamana(): 'par' | 'impar' {
-        const startAnScolar = new Date('2025-09-29')
-        const acum = new Date()
-        const saptamaniTrecute = Math.floor(
-            (acum.getTime() - startAnScolar.getTime()) / (7 * 24 * 60 * 60 * 1000)
-        )
-        return saptamaniTrecute % 2 === 0 ? 'impar' : 'par'
-    }
-
     //Citim request-ul de la ESP32
     let body;
     try {
@@ -47,7 +37,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Cod QR expirat. Generează altul!' }, { status: 403 })
     }
 
-    //Gaseste studentul 
     const { data: student } = await supabase
         .from('profiles')
         .select('id, full_name, grupa, role')
@@ -58,7 +47,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Student necunoscut' }, { status: 404 })
     }
 
-    //Gaseste sala
     const { data: room_data } = await supabase
         .from('rooms')
         .select('id')
@@ -84,7 +72,6 @@ export async function POST(req: NextRequest) {
     }
     const zi = weekdayMap[get('weekday')]
     const oraAcum = `${get('hour')}:${get('minute')}:${get('second')}`
-    const saptamana = getSaptamana()
 
     //Gaseste orarul activ
     const { data: orar } = await supabase
@@ -92,7 +79,6 @@ export async function POST(req: NextRequest) {
         .select('id, materie, grupa')
         .eq('room_id', room_data.id)
         .eq('zi', zi)
-        //.eq('saptamana', saptamana)
         .lte('ora_start', oraAcum)
         .gte('ora_end', oraAcum)
         .maybeSingle()
