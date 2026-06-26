@@ -90,20 +90,15 @@ export default function ProfesorPage() {
         const { ziAzi, oraAzi } = getOraSiZiBucuresti()
         const saptamana = getSaptamana()
 
-        const { data: orarData, error } = await supabase
+        const { data: orarData } = await supabase
             .from('schedule')
-            .select('id, materie, grupa, ora_start, ora_end, specializare')
+            .select('id, materie, grupa, ora_start, ora_end') // ← fără specializare
             .eq('room_id', ROOM_ID)
             .eq('zi', ziAzi)
             .lte('ora_start', oraAzi)
             .gte('ora_end', oraAzi)
             .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
             .maybeSingle()
-
-        // Debug temporar — șterge după ce funcționează
-        console.log('[fetchDateCurs] ziAzi:', ziAzi, 'oraAzi:', oraAzi, 'saptamana:', saptamana)
-        console.log('[fetchDateCurs] orarData:', orarData, 'error:', error)
-
         if (!orarData) {
             setOrarCurent(null)
             setStudenti([])
@@ -133,8 +128,7 @@ export default function ProfesorPage() {
         ])
 
         const specializare = resStudenti.data?.[0]?.specializare ?? 'Nespecificat'
-
-        setOrarCurent({ ...orarData, specializare }) // o singură dată, cu tot
+        setOrarCurent({ ...orarData, specializare })
 
         if (resStudenti.data) {
             setStudenti(resStudenti.data.map((p: any) => ({
