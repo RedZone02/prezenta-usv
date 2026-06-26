@@ -1,6 +1,7 @@
-"use client";
+"use client"
 import React, { useEffect, useRef } from 'react';
-import styles from './FraudAlert.module.css';
+import styles from './module_css/FraudAlert.module.css'
+
 
 interface FraudAlertProps {
     studentiScanati: number;
