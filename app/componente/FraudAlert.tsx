@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './FraudAlert.module.css';
+import styles from './module_css/FraudAlert.module.css'
 
 interface FraudAlertProps {
     studentiScanati: number;
