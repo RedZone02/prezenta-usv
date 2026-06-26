@@ -1,5 +1,6 @@
-import React from 'react';
-import styles from './module_css/FraudAlert.module.css'
+"use client";
+import React, { useEffect, useRef } from 'react';
+import styles from './FraudAlert.module.css';
 
 interface FraudAlertProps {
     studentiScanati: number;
@@ -9,6 +10,48 @@ interface FraudAlertProps {
 export default function FraudAlert({ studentiScanati, persoaneFizice }: FraudAlertProps) {
     const esteFrauda = studentiScanati > persoaneFizice;
 
+    // Folosim useRef pentru a nu spama notificarea la fiecare re-randare a paginii
+    const notificareTrimisa = useRef(false);
+
+    // 1. Cerem permisiunea browserului când componenta se încarcă
+    useEffect(() => {
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    }, []);
+
+    // 2. Declanșăm notificarea Push pe ecran
+    useEffect(() => {
+        if (esteFrauda && !notificareTrimisa.current) {
+            if ("Notification" in window && Notification.permission === "granted") {
+
+                // Creăm și afișăm notificarea de sistem
+                new Notification("🚨 Alertă Prezență (Sistem USV)", {
+                    body: `Posibilă fraudă: ${studentiScanati} carduri scanate, dar doar ${persoaneFizice} persoane în sală.`,
+                    icon: "/favicon.ico" // Aici va apărea logo-ul site-ului tău
+                });
+
+                // Vibrate is not part of NotificationOptions in TypeScript typings.
+                // Use navigator.vibrate when available to trigger device vibration.
+                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                    try {
+                        (navigator as any).vibrate([200, 100, 200]);
+                    } catch (e) {
+                        // ignore vibration errors
+                    }
+                }
+
+                // Marcăm că am trimis alerta ca să nu se repete la infinit
+                notificareTrimisa.current = true;
+            }
+        } else if (!esteFrauda) {
+            // Dacă numărul s-a reglat (a mai intrat cineva), resetăm starea
+            // Astfel, dacă apare O NOUĂ fraudă mai târziu, va suna din nou.
+            notificareTrimisa.current = false;
+        }
+    }, [esteFrauda, studentiScanati, persoaneFizice]);
+
+    // Logica vizuală (bannerul roșu din pagină) rămâne la fel
     if (!esteFrauda) {
         return null;
     }
@@ -16,7 +59,6 @@ export default function FraudAlert({ studentiScanati, persoaneFizice }: FraudAle
     return (
         <div className={styles.alertContainer}>
             <div className={styles.iconWrapper}>
-                {/* Icon de avertisment */}
                 <svg className={styles.icon} viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
