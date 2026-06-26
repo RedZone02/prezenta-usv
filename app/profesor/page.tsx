@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -50,7 +50,7 @@ function getOraSiZiBucuresti() {
 
 /* COMPONENTA PRINCIPALA */
 export default function ProfesorPage() {
-    const supabase = createClientBrowser()
+    const supabase = useMemo(() => createClientBrowser(), [])
     const router = useRouter()
 
     const [tabActiv, setTabActiv] = useState<Tab>('sala')
@@ -90,7 +90,7 @@ export default function ProfesorPage() {
         const { ziAzi, oraAzi } = getOraSiZiBucuresti()
         const saptamana = getSaptamana()
 
-        const { data: orarData } = await supabase
+        const { data: orarData, error } = await supabase
             .from('schedule')
             .select('id, materie, grupa, ora_start, ora_end, specializare')
             .eq('room_id', ROOM_ID)
@@ -99,6 +99,10 @@ export default function ProfesorPage() {
             .gte('ora_end', oraAzi)
             .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
             .maybeSingle()
+
+        // Debug temporar — șterge după ce funcționează
+        console.log('[fetchDateCurs] ziAzi:', ziAzi, 'oraAzi:', oraAzi, 'saptamana:', saptamana)
+        console.log('[fetchDateCurs] orarData:', orarData, 'error:', error)
 
         if (!orarData) {
             setOrarCurent(null)
@@ -114,13 +118,8 @@ export default function ProfesorPage() {
             return
         }
 
-        setOrarCurent(orarData)
-
-        // ✅ Evităm re-fetch attendance dacă e același curs
-        setScheduleId(prev => {
-            if (prev === orarData.id) return prev
-            return orarData.id
-        })
+        // Simplu, fără guard
+        setScheduleId(orarData.id)
 
         const [resStudenti, resPrezente] = await Promise.all([
             supabase.from('profiles')
@@ -133,6 +132,10 @@ export default function ProfesorPage() {
                 .eq('schedule_id', orarData.id)
         ])
 
+        const specializare = resStudenti.data?.[0]?.specializare ?? 'Nespecificat'
+
+        setOrarCurent({ ...orarData, specializare }) // o singură dată, cu tot
+
         if (resStudenti.data) {
             setStudenti(resStudenti.data.map((p: any) => ({
                 id: p.id,
@@ -140,10 +143,6 @@ export default function ProfesorPage() {
                 student_number: p.nr_matricol ?? '—',
                 grupa: p.grupa ?? orarData.grupa,
             })))
-            setOrarCurent({
-                ...orarData,
-                specializare: resStudenti.data[0]?.specializare ?? 'Nespecificat'
-            })
         }
 
         if (resPrezente.data) {
@@ -153,7 +152,6 @@ export default function ProfesorPage() {
             setOreScanare(ore)
         }
     }, [supabase])
-
     /* Locuri + Realtime sală + Realtime senzori + Realtime schedule */
     useEffect(() => {
         async function fetchLocuri() {
