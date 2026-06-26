@@ -9,8 +9,6 @@ interface FraudAlertProps {
 
 export default function FraudAlert({ studentiScanati, persoaneFizice }: FraudAlertProps) {
     const esteFrauda = studentiScanati > persoaneFizice;
-
-    // Dacă nu e fraudă, nu randăm nimic
     if (!esteFrauda) {
         return null;
     }
@@ -24,7 +22,7 @@ export default function FraudAlert({ studentiScanati, persoaneFizice }: FraudAle
             </div>
             <div className={styles.textWrapper}>
                 <h3 className={styles.title}>
-                    Atenție: Posibilă validare multiplă (Buddy Punching)
+                    Atenție: Posibilă validare multiplă
                 </h3>
                 <p className={styles.description}>
                     Sistemul a înregistrat <strong>{studentiScanati}</strong> studenți prezenți, dar senzorii de la ușă raportează doar <strong>{persoaneFizice}</strong> persoane în sală.

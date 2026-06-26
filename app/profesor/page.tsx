@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import styles from './page.module.css'
 import { createClientBrowser } from '../lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { getSaptamana } from '../lib/date'
-import FraudAlert from '../componente/FraudAlert';
+import FraudAlert from '../componente/FraudAlert'
 
 /* TIPURI DATE */
 type Loc = {
@@ -38,7 +38,7 @@ type OrarCurent = {
 
 type Tab = 'sala' | 'prezenti' | 'statistici'
 
-/* UTILS / HELPERS */
+/* UTILS */
 function getOraSiZiBucuresti() {
     const acum = new Date()
     const bucuresti = new Date(acum.toLocaleString('en-US', { timeZone: 'Europe/Bucharest' }))
@@ -48,18 +48,15 @@ function getOraSiZiBucuresti() {
     return { ziAzi, oraAzi: `${ora}:${min}:00` }
 }
 
-
 /* COMPONENTA PRINCIPALA */
 export default function ProfesorPage() {
     const supabase = createClientBrowser()
     const router = useRouter()
 
-    // State-uri UI
     const [tabActiv, setTabActiv] = useState<Tab>('sala')
     const [modalLoc, setModalLoc] = useState<Loc | null>(null)
     const [loading, setLoading] = useState(true)
     const [exportLoading, setExportLoading] = useState(false)
-    // State-uri Date
     const [numeProfesor, setNumeProfesor] = useState<string>('')
     const [locuri, setLocuri] = useState<Loc[]>([])
     const [studenti, setStudenti] = useState<Student[]>([])
@@ -70,7 +67,7 @@ export default function ProfesorPage() {
     const [persoaneSenzor, setPersoaneSenzor] = useState<number>(0)
     const ROOM_ID = 'c101'
 
-    /* Autentificare & Verificare Rol Profesor */
+    /* Autentificare */
     useEffect(() => {
         async function fetchProfil() {
             const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -82,15 +79,82 @@ export default function ProfesorPage() {
                 .eq('id', user.id)
                 .single()
 
-            if (error || !data || data.role !== 'profesor') {
-                return router.push('/login')
-            }
+            if (error || !data || data.role !== 'profesor') return router.push('/login')
             setNumeProfesor(data.full_name)
         }
         fetchProfil()
     }, [supabase, router])
 
-    /* Încarcă Locuri + Realtime într-un singur efect */
+    /* ✅ NOU: fetchDateCurs extras ca useCallback */
+    const fetchDateCurs = useCallback(async () => {
+        const { ziAzi, oraAzi } = getOraSiZiBucuresti()
+        const saptamana = getSaptamana()
+
+        const { data: orarData } = await supabase
+            .from('schedule')
+            .select('id, materie, grupa, ora_start, ora_end, specializare')
+            .eq('room_id', ROOM_ID)
+            .eq('zi', ziAzi)
+            .lte('ora_start', oraAzi)
+            .gte('ora_end', oraAzi)
+            .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
+            .maybeSingle()
+
+        if (!orarData) {
+            setOrarCurent(null)
+            setStudenti([])
+            setScheduleId(null)
+            return
+        }
+
+        if (orarData.materie === 'PAUZA') {
+            setOrarCurent({ ...orarData, materie: '☕ Pauză' })
+            setStudenti([])
+            setScheduleId(null)
+            return
+        }
+
+        setOrarCurent(orarData)
+
+        // ✅ Evităm re-fetch attendance dacă e același curs
+        setScheduleId(prev => {
+            if (prev === orarData.id) return prev
+            return orarData.id
+        })
+
+        const [resStudenti, resPrezente] = await Promise.all([
+            supabase.from('profiles')
+                .select('id, full_name, nr_matricol, grupa, specializare')
+                .eq('grupa', orarData.grupa)
+                .eq('role', 'student')
+                .order('full_name'),
+            supabase.from('attendance')
+                .select('student_id, scanned_at')
+                .eq('schedule_id', orarData.id)
+        ])
+
+        if (resStudenti.data) {
+            setStudenti(resStudenti.data.map((p: any) => ({
+                id: p.id,
+                full_name: p.full_name,
+                student_number: p.nr_matricol ?? '—',
+                grupa: p.grupa ?? orarData.grupa,
+            })))
+            setOrarCurent({
+                ...orarData,
+                specializare: resStudenti.data[0]?.specializare ?? 'Nespecificat'
+            })
+        }
+
+        if (resPrezente.data) {
+            setAttendanceIds(new Set(resPrezente.data.map((s: any) => s.student_id)))
+            const ore: Record<string, string> = {}
+            resPrezente.data.forEach((s: any) => { ore[s.student_id] = s.scanned_at })
+            setOreScanare(ore)
+        }
+    }, [supabase])
+
+    /* Locuri + Realtime sală + Realtime senzori + Realtime schedule */
     useEffect(() => {
         async function fetchLocuri() {
             const { data, error } = await supabase
@@ -109,13 +173,12 @@ export default function ProfesorPage() {
             if (data) setPersoaneSenzor(data.persoane_prezente || 0)
         }
         fetchSenzori()
+
         const channelSenzori = supabase
             .channel(`profesor-senzori-${ROOM_ID}`)
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${ROOM_ID}` },
-                (payload: any) => {
-                    setPersoaneSenzor(payload.new.persoane_prezente)
-                }
+                (payload: any) => { setPersoaneSenzor(payload.new.persoane_prezente) }
             )
             .subscribe()
 
@@ -127,76 +190,30 @@ export default function ProfesorPage() {
             )
             .subscribe()
 
-        return () => { supabase.removeChannel(channelSala) }
-    }, [supabase])
+        // ✅ NOU: Realtime pe schedule — dacă orarul se schimbă în DB, re-fetch instant
+        const channelSchedule = supabase
+            .channel(`profesor-schedule-${ROOM_ID}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'schedule', filter: `room_id=eq.${ROOM_ID}` },
+                () => { fetchDateCurs() }
+            )
+            .subscribe()
 
-    // Încarcă Orar, Studenți și Scanări Initiale
-    useEffect(() => {
-        async function fetchDateCurs() {
-            const { ziAzi, oraAzi } = getOraSiZiBucuresti()
-            const saptamana = getSaptamana()
-
-            const { data: orarData, error: orarError } = await supabase
-                .from('schedule')
-                .select('id, materie, grupa, ora_start, ora_end')
-                .eq('room_id', ROOM_ID)
-                .eq('zi', ziAzi)
-                .lte('ora_start', oraAzi)
-                .gte('ora_end', oraAzi)
-                .or(`saptamana.is.null,saptamana.eq.${saptamana}`)
-                .maybeSingle()
-
-            if (!orarData) {
-                setOrarCurent(null)
-                setStudenti([])
-                setScheduleId(null)
-                return
-            }
-
-            if (orarData.materie === 'PAUZA') {
-                setOrarCurent({ ...orarData, materie: '☕ Pauză' })
-                setStudenti([])
-                setScheduleId(null)
-                return
-            }
-
-            setOrarCurent(orarData)
-            setScheduleId(orarData.id)
-
-            // Paralelizăm cererile pentru profiles și attendance
-            const [resStudenti, resPrezente] = await Promise.all([
-                supabase.from('profiles').select('id, full_name, nr_matricol, grupa, specializare',).eq('grupa', orarData.grupa).eq('role', 'student').order('full_name'),
-                supabase.from('attendance').select('student_id, scanned_at').eq('schedule_id', orarData.id)
-            ])
-
-            let specializareDedusa = 'Nespecificat'
-
-            if (resStudenti.data) {
-                setStudenti(resStudenti.data.map((p: { id: string; full_name: string; nr_matricol: string | null; grupa: string | null }) => ({
-                    id: p.id,
-                    full_name: p.full_name,
-                    student_number: p.nr_matricol ?? '—',
-                    grupa: p.grupa ?? orarData.grupa,
-                })))
-                specializareDedusa = resStudenti.data[0].specializare ?? 'Nespecificat'
-            }
-            setOrarCurent({
-                ...orarData,
-                specializare: specializareDedusa
-            })
-            setScheduleId(orarData.id)
-
-            if (resPrezente.data) {
-                setAttendanceIds(new Set(resPrezente.data.map((s: { student_id: string; scanned_at: string }) => s.student_id)))
-                const ore: Record<string, string> = {}
-                resPrezente.data.forEach((s: { student_id: string; scanned_at: string }) => { ore[s.student_id] = s.scanned_at })
-                setOreScanare(ore)
-            }
+        return () => {
+            supabase.removeChannel(channelSala)
+            supabase.removeChannel(channelSenzori)
+            supabase.removeChannel(channelSchedule)
         }
-        fetchDateCurs()
-    }, [supabase])
+    }, [supabase, fetchDateCurs])
 
-    // Realtime Attendance (RFID)
+    /* ✅ NOU: Polling la 60s + fetch inițial pentru orar/studenți */
+    useEffect(() => {
+        fetchDateCurs()
+        const interval = setInterval(fetchDateCurs, 60_000)
+        return () => clearInterval(interval)
+    }, [fetchDateCurs])
+
+    /* Realtime Attendance (RFID) */
     useEffect(() => {
         if (!scheduleId) return
 
@@ -217,44 +234,34 @@ export default function ProfesorPage() {
         return () => { supabase.removeChannel(channelAttendance) }
     }, [supabase, scheduleId])
 
-    // --- INTERACTIUNI / FUNCTII ---
-
+    /* INTERACȚIUNI */
     function handleClickLoc(loc: Loc) {
-        // Dacă locul este marcat ca defect, click-ul întreabă dacă vrei să-l repari
         if (loc.defect) {
             const confirm = window.confirm(`PC-ul de la locul ${loc.numar} este marcat ca DEFECT. Doriți să îl marcați ca fiind funcțional?`)
             if (confirm) toggleDefectLoc(loc.id, true)
             return
         }
-
-        // Dacă e ocupat, dăm afară studentul
         if (loc.ocupat && loc.student_id) {
             eliminaStudent(loc.student_id)
         } else {
-            // Dacă e liber, deschidem modalul (unde avem și opțiunea de a-l marca defect)
             setModalLoc(loc)
         }
     }
 
-    // Funcția NOUĂ: Marcare/Demarcare Defect
     async function toggleDefectLoc(locId: number, currentDefectStatus: boolean) {
         const { error } = await supabase
             .from('room_seats')
-            .update({ defect: !currentDefectStatus }) // inversăm statusul
+            .update({ defect: !currentDefectStatus })
             .eq('id', locId)
 
-        if (error) {
-            alert('Eroare la actualizarea statusului: ' + error.message)
-        } else {
-            setModalLoc(null) // închidem modalul după salvare
-        }
+        if (error) alert('Eroare la actualizarea statusului: ' + error.message)
+        else setModalLoc(null)
     }
 
     async function eliminaStudent(studentId: string) {
         if (!scheduleId) return
 
         const locStudent = locuri.find(l => l.ocupat && l.student_id === studentId)
-
         if (locStudent) {
             const { error } = await supabase
                 .from('room_seats')
@@ -271,16 +278,8 @@ export default function ProfesorPage() {
 
         if (error) return console.error('Eroare stergere prezenta:', error.message)
 
-        setAttendanceIds(prev => {
-            const next = new Set(prev)
-            next.delete(studentId)
-            return next
-        })
-        setOreScanare(prev => {
-            const next = { ...prev }
-            delete next[studentId]
-            return next
-        })
+        setAttendanceIds(prev => { const next = new Set(prev); next.delete(studentId); return next })
+        setOreScanare(prev => { const next = { ...prev }; delete next[studentId]; return next })
     }
 
     async function asigneazaStudent(studentId: string) {
@@ -300,19 +299,19 @@ export default function ProfesorPage() {
             .eq('schedule_id', scheduleId)
             .maybeSingle()
 
-        const oraScanare = existing ? existing.scanned_at : new Date().toISOString()
+        const oraScanareVal = existing ? existing.scanned_at : new Date().toISOString()
 
         if (!existing) {
             await supabase.from('attendance').insert({
                 student_id: studentId,
                 schedule_id: scheduleId,
                 room_id: ROOM_ID,
-                scanned_at: oraScanare,
+                scanned_at: oraScanareVal,
                 uid_used: 'manual',
             })
         }
 
-        setOreScanare(prev => ({ ...prev, [studentId]: new Date(oraScanare).toISOString() }))
+        setOreScanare(prev => ({ ...prev, [studentId]: new Date(oraScanareVal).toISOString() }))
         setAttendanceIds(prev => new Set([...prev, studentId]))
         setModalLoc(null)
     }
@@ -325,7 +324,9 @@ export default function ProfesorPage() {
                 'Nr. Matricol': s.student_number ?? '—',
                 'Nume Student': s.full_name,
                 'Grupă': s.grupa ?? '—',
-                'Ora intrării': oreScanare[s.id] ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }) : '—',
+                'Ora intrării': oreScanare[s.id]
+                    ? new Date(oreScanare[s.id]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                    : '—',
                 'Prezent': prezentiIds.has(s.id) ? 'Prezent(ă)' : 'Absent(ă)',
             }))
 
@@ -344,14 +345,14 @@ export default function ProfesorPage() {
         router.push('/')
     }
 
-    // --- STARI DERIVATE ---
+    /* STĂRI DERIVATE */
     const prezentiIds = new Set([
         ...locuri.filter(l => l.ocupat && l.student_id).map(l => l.student_id as string),
         ...attendanceIds,
     ])
     const nrPrezentiTotal = studenti.filter(s => prezentiIds.has(s.id)).length
     const locuriDefecte = locuri.filter(l => l.defect).length
-    const libere = locuri.filter(l => !l.ocupat && !l.defect) // locurile defecte nu sunt considerate libere
+    const libere = locuri.filter(l => !l.ocupat && !l.defect)
     const procent = studenti.length > 0 ? Math.round((nrPrezentiTotal / studenti.length) * 100) : 0
 
     if (loading) return (
