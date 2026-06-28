@@ -10,10 +10,10 @@ export async function GET() {
     try {
         // 1. Obținem ora și ziua curente pentru a găsi cursurile active
         const now = new Date();
-        const currentDay = now.getDay(); // Atenție la formatul tău din DB: 0 = Duminică, 1 = Luni, etc.
-        const currentTime = now.toTimeString().split(' ')[0]; // Format HH:MM:SS
+        const currentDay = now.getDay();
+        const currentTime = now.toTimeString().split(' ')[0];
 
-        // Găsim toate cursurile care se țin fix acum
+        // Găsim toate cursurile a se țin fix acum
         const { data: activeSchedules, error: scheduleError } = await supabase
             .from('schedule')
             .select('id, room_id, profesor_id, materie')
@@ -29,14 +29,10 @@ export async function GET() {
 
         // 2. Trecem prin fiecare curs activ și facem verificarea
         for (const schedule of activeSchedules) {
-
-            // A. Câți au scanat cardul (din attendance)
             const { count: scannedCount, error: attendanceError } = await supabase
                 .from('attendance')
                 .select('*', { count: 'exact', head: true })
                 .eq('schedule_id', schedule.id);
-
-            // B. Câți sunt fizic în sală (din rooms)
             const { data: roomData, error: roomError } = await supabase
                 .from('rooms')
                 .select('persoane_prezente')
@@ -57,7 +53,6 @@ export async function GET() {
                     .select('full_name, email')
                     .eq('id', schedule.profesor_id)
                     .single();
-
                 alerts.push({
                     room: schedule.room_id,
                     materie: schedule.materie,
@@ -70,7 +65,6 @@ export async function GET() {
 
             }
         }
-
         return NextResponse.json({
             status: 'ok',
             fraud_alerts: alerts

@@ -84,8 +84,6 @@ export default function ProfesorPage() {
         }
         fetchProfil()
     }, [supabase, router])
-
-    /* ✅ NOU: fetchDateCurs extras ca useCallback */
     const fetchDateCurs = useCallback(async () => {
         const { ziAzi, oraAzi } = getOraSiZiBucuresti()
         const saptamana = getSaptamana()
@@ -112,8 +110,6 @@ export default function ProfesorPage() {
             setScheduleId(null)
             return
         }
-
-        // Simplu, fără guard
         setScheduleId(orarData.id)
 
         const [resStudenti, resPrezente] = await Promise.all([
@@ -146,7 +142,6 @@ export default function ProfesorPage() {
             setOreScanare(ore)
         }
     }, [supabase])
-    /* Locuri + Realtime sală + Realtime senzori + Realtime schedule */
     useEffect(() => {
         async function fetchLocuri() {
             const { data, error } = await supabase
@@ -182,7 +177,6 @@ export default function ProfesorPage() {
             )
             .subscribe()
 
-        // ✅ NOU: Realtime pe schedule — dacă orarul se schimbă în DB, re-fetch instant
         const channelSchedule = supabase
             .channel(`profesor-schedule-${ROOM_ID}`)
             .on('postgres_changes',
@@ -198,7 +192,6 @@ export default function ProfesorPage() {
         }
     }, [supabase, fetchDateCurs])
 
-    /* ✅ NOU: Polling la 60s + fetch inițial pentru orar/studenți */
     useEffect(() => {
         fetchDateCurs()
         const interval = setInterval(fetchDateCurs, 60_000)
