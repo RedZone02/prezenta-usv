@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     const { data: seats } = await supabase
         .from('room_seats')
-        .select('numar, ocupat, rezervat')
+        .select('numar,defect, ocupat, rezervat')
         .eq('room_id', room)
         .order('numar')
 
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
 
     const total = seats?.length ?? 0
-    const occupied = seats?.filter(s => s.ocupat).length ?? 0
+    const occupied = seats?.filter(s => s.ocupat+s.defect).length ?? 0
     const free = total - occupied
 
     return NextResponse.json({
